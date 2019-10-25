@@ -19,6 +19,9 @@ class Server
 	protected $_parent=null;
 	protected $_children=array();
 
+	//will be triggered when new client attaches
+	protected $_newClientCb=null;
+	
 	public function __destruct()
 	{
 		$this->terminate(false);
@@ -156,6 +159,13 @@ class Server
 		}
 		return $this;
 	}
+	public function setNewClientCb($obj=null, $method=null)
+	{
+		if (is_object($obj) === true && is_string($method) === true) {
+			$this->_newClientCb	= array($obj, $method);
+		}
+		return $this;
+	}
 	public function getNewClients($timeoutMs=10000)
 	{
 		$newObjs	= array();
@@ -190,12 +200,19 @@ class Server
 			try {
 				
 				$newScObj->connect();
+				if ($this->_newClientCb !== null) {
+					//throw if you do not want to allow this client, only a true return will allow
+					$isValid	= call_user_func_array($this->_newClientCb, array($newScObj));
+					if ($isValid !== true) {
+						throw new \Exception("Consumer error, rather safe than sorry. Reject!");
+					}
+				}
 				
 				$this->_children[]	= $newScObj;
 				$newObjs[]			= $newScObj;
 
 			} catch (\Exception $e) {
-				//connect failed, we do nothing
+				//connect failed or was rejected, we do nothing
 				//anyone who connects (fsockopen even) will be picked up
 				//if they fail to connect we discard them
 				$newScObj->terminate(false);

@@ -386,89 +386,95 @@ class Client
 		if ($this->getIsConnected() === false) {
 			$this->setIsConnected(null);
 			
-			//disable blocking so our reads can function in code logic without blocking
-			stream_set_blocking($this->getSocket(), false);
-			stream_set_chunk_size($this->getSocket(), $this->getChunkSize());
-
-			//default headers, version 13 means RFC-6455 compliant
-			$heads = array(
-					"Host"                  => $this->getHostname() . ":" . $this->getPort(),
-					"User-Agent"            => "Merlin-Ws-Client",
-					"Connection"            => "Upgrade",
-					"Upgrade"               => "websocket",
-					"Sec-WebSocket-Key"     => $this->getSocketKey(),
-					"Sec-WebSocket-Version" => 13,
-			);
-			
-			//merge in custom headers
-			$heads		= array_merge($heads, $this->getHeaders());
+			try {
+				//disable blocking so our reads can function in code logic without blocking
+				stream_set_blocking($this->getSocket(), false);
+				stream_set_chunk_size($this->getSocket(), $this->getChunkSize());
 	
-			//turn into a string we can send
-			$strHeader	= "GET " . $this->getUriPath() . " HTTP/1.1";
-			foreach ($heads as $key => $head) {
-				$strHeader	.= "\r\n" . $key . ": " . $head;
-			}
-			$strHeader	.= "\r\n\r\n";
-			
-			//open the socket and send the header data, go directly to the raw writer function since we are sending text not binary
-			$wData	= $this->getParent()->write($this, $strHeader);
-			if (strlen($wData["error"]) > 0) {
-				throw new \Exception("Connect failed. Error: " . $wData["error"]);
-			}
-
-			//cannnot use the read function, there seems to be a problem with reading all bytes
-			//if the server sends a message immediately after the connect we cannot place it in the buffer for some reason
-			//even though the sub_str function should be binary safe.
-			$error	= null;
-			$tTime	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
-			$hData	= "";
-			$done	= false;
-			while($done === false) {
-			
-				$rByte		= $this->getParent()->rawRead($this, 1);
-				if ($rByte != "") {
-					$hData	.= $rByte;
-					if (strpos($hData, "\r\n\r\n") !== false) {
-						//headers must end in \r\n\r\n, we found the end of the header
-						$done	= true;
+				//default headers, version 13 means RFC-6455 compliant
+				$heads = array(
+						"Host"                  => $this->getHostname() . ":" . $this->getPort(),
+						"User-Agent"            => "Merlin-Ws-Client",
+						"Connection"            => "Upgrade",
+						"Upgrade"               => "websocket",
+						"Sec-WebSocket-Key"     => $this->getSocketKey(),
+						"Sec-WebSocket-Version" => 13,
+				);
+				
+				//merge in custom headers
+				$heads		= array_merge($heads, $this->getHeaders());
+		
+				//turn into a string we can send
+				$strHeader	= "GET " . $this->getUriPath() . " HTTP/1.1";
+				foreach ($heads as $key => $head) {
+					$strHeader	.= "\r\n" . $key . ": " . $head;
+				}
+				$strHeader	.= "\r\n\r\n";
+				
+				//open the socket and send the header data, go directly to the raw writer function since we are sending text not binary
+				$wData	= $this->getParent()->write($this, $strHeader);
+				if (strlen($wData["error"]) > 0) {
+					throw new \Exception("Connect failed. Error: " . $wData["error"]);
+				}
+	
+				//cannnot use the read function, there seems to be a problem with reading all bytes
+				//if the server sends a message immediately after the connect we cannot place it in the buffer for some reason
+				//even though the sub_str function should be binary safe.
+				$error	= null;
+				$tTime	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
+				$hData	= "";
+				$done	= false;
+				while($done === false) {
+				
+					$rByte		= $this->getParent()->rawRead($this, 1);
+					if ($rByte != "") {
+						$hData	.= $rByte;
+						if (strpos($hData, "\r\n\r\n") !== false) {
+							//headers must end in \r\n\r\n, we found the end of the header
+							$done	= true;
+						}
+						
+					} else {
+						//no need to saturate the cpu 
+						usleep(10000);
 					}
-					
-				} else {
-					//no need to saturate the cpu 
-					usleep(10000);
-				}
-
-				if ($tTime <= \MTM\Utilities\Factories::getTime()->getMicroEpoch()) {
-					//could also be the server requires SSL/TLS
-					$error		= "Failed to connect. Server Timeout";
-					break;
-				}
-			}
-
-			if ($error === null) {
-
-				//expected return sec key
-				$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-				$eSecKey	= base64_encode(pack("H*", sha1($this->getSocketKey() . $strRfc6455)));
-				$rSecKey	= null;
-				$lines		= explode("\n", $hData);
-				foreach ($lines as $line) {
-					$line	= trim($line);
-					if (preg_match("/Sec-WebSocket-Accept:\s(.*)$/i", $line, $lParts) == 1) {
-						$rSecKey	= trim($lParts[1]);
+	
+					if ($tTime <= \MTM\Utilities\Factories::getTime()->getMicroEpoch()) {
+						//could also be the server requires SSL/TLS
+						$error		= "Failed to connect. Server Timeout";
 						break;
 					}
 				}
 	
-				if ($eSecKey != $rSecKey) {
-					throw new \Exception("Failed to connect. Server returned invalid upgrade response");
+				if ($error === null) {
+	
+					//expected return sec key
+					$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+					$eSecKey	= base64_encode(pack("H*", sha1($this->getSocketKey() . $strRfc6455)));
+					$rSecKey	= null;
+					$lines		= explode("\n", $hData);
+					foreach ($lines as $line) {
+						$line	= trim($line);
+						if (preg_match("/Sec-WebSocket-Accept:\s(.*)$/i", $line, $lParts) == 1) {
+							$rSecKey	= trim($lParts[1]);
+							break;
+						}
+					}
+		
+					if ($eSecKey != $rSecKey) {
+						throw new \Exception("Failed to connect. Server returned invalid upgrade response");
+					} else {
+						$this->setLastReceivedTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
+						$this->setIsConnected(true);
+					}
+	
 				} else {
-					$this->setLastReceivedTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
-					$this->setIsConnected(true);
+					throw new \Exception($error);
 				}
 				
-			} else {
-				throw new \Exception($error);
+			} catch (\Exception $e) {
+				$this->setIsConnected(false);
+				throw $e;
 			}
 		}
 		return $this;
@@ -510,7 +516,7 @@ class Client
 					//if you get error: Address already in use, know that if the port was in use by another socket
 					//that is now shutdown, it will take a few seconds before the port is available again
 					//but it will be freed up eventually
-					throw new \Exception("Socket Msg: " . $errstr, "Socket Code: " . $errno);
+					throw new \Exception("Socket Error: " . $errstr, $errno);
 				}
 			
 			} else {
