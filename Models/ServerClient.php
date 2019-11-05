@@ -41,9 +41,10 @@ class ServerClient
 				//remove from parent
 				$pObj->removeClient($this);
 
-				if ($this->getIsConnected() === true) {
+				if ($this->getIsConnected() === true && $pObj->isInit() === true && $pObj->isTerm() === false) {
 					
 					//we are initiating the shutdown, send a message to the other side
+					//server is still live so we can send the message
 				
 					try {
 						

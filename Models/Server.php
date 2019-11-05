@@ -5,6 +5,8 @@ namespace MTM\WsSocket\Models;
 class Server
 {
 	protected $_uuid=null;
+	protected $_isInit=false;
+	protected $_isTerm=false;
 	protected $_socket=null;
 	protected $_protocol=null;
 	protected $_hostname=null;
@@ -28,17 +30,28 @@ class Server
 	}
 	public function terminate($throw=true)
 	{
-		if (is_resource($this->_socket) === true) {
-			try {
-				fclose($this->_socket);
-				$this->_socket			= null;
-				$this->_isConnected		= false;
-			} catch (\Exception $e) {
-				if ($throw === true) {
-					throw $e;
+		if ($this->isTerm() === false) {
+			if (is_resource($this->_socket) === true) {
+				try {
+					fclose($this->_socket);
+					$this->_socket			= null;
+					$this->_isConnected		= false;
+				} catch (\Exception $e) {
+					if ($throw === true) {
+						throw $e;
+					}
 				}
 			}
+			$this->_isTerm	= true;
 		}
+	}
+	public function isTerm()
+	{
+		return $this->_isTerm;
+	}
+	public function isInit()
+	{
+		return $this->_isInit;
 	}
 	public function setConnection($protocol, $hostname, $portNbr, $timeoutMs=30000)
 	{
@@ -150,7 +163,8 @@ class Server
 	}
 	public function removeClient($clientObj)
 	{
-		foreach ($this->getClients() as $cId => $eObj) {
+		//dont get new children, server may have been terminated
+		foreach ($this->getChildren() as $cId => $eObj) {
 			if ($eObj->getUuid() == $clientObj->getUuid()) {
 				unset($this->_children[$cId]);
 				$clientObj->terminate(false);
@@ -228,10 +242,12 @@ class Server
 	protected function getSocket()
 	{
 		//server socket is only needed by the server, clients have their own resource
-		if ($this->_socket === null) {
+		if ($this->isInit() === false) {
 			
 			if ($this->getProtocol() === null || $this->getHostname() === null || $this->getPort() === null || $this->getTimeout() === null) {
 				throw new \Exception("Missing connection parameters");
+			} elseif ($this->isTerm() === true) {
+				throw new \Exception("Server terminated");
 			}
 			
 			$strConn	= $this->getProtocol() . "://". $this->getHostname() .":" . $this->getPort() . "";
@@ -269,6 +285,7 @@ class Server
 
 				@stream_set_blocking($sockRes, false);
 				$this->_socket	= $sockRes;
+				$this->_isInit	= true;
 				
 			} else {
 				//if you get error: Address already in use, know that if the port was in use by another socket
