@@ -2,7 +2,7 @@
 	"name" : "merlinthemagic/mtm-ws-socket",
 	"type" : "library",
 	"description" : "Web sockets for PHP 7",
-	"version" : "0.0.2",
+	"version" : "0.0.3",
 	"keywords" : [
 		"ws",
 		"wss"
