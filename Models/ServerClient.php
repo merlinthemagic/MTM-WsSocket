@@ -365,7 +365,7 @@ class ServerClient
 						
 						//send the return
 						$wData		= $this->getParent()->getParent()->rawWrite($this, $strHeader);
-						if (strlen($wData["error"]) > 0) {
+						if ($wData === false) {
 							$error		= "Header write error: " . $wData["error"];
 							$errorWrite	= "HTTP/1.1 500 Internal Error\r\n\r\n";
 						}
