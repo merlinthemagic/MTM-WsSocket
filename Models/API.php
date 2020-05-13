@@ -176,10 +176,10 @@ class API
 				$byte2Len	= strlen($byte2);
 				//pad the strings if needed to get all 8 bits showing
 				if ($byte1Len < 8) {
-					$byte1	= str_repeat ("0", (8 - $byte1Len)) . $byte1;
+					$byte1	= str_repeat("0", (8 - $byte1Len)) . $byte1;
 				}
 				if ($byte2Len < 8) {
-					$byte2	= str_repeat ("0", (8 - $byte2Len)) . $byte2;
+					$byte2	= str_repeat("0", (8 - $byte2Len)) . $byte2;
 				}
 				
 				//split the first byte into 2
