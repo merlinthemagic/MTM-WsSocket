@@ -441,7 +441,7 @@ class Client
 	
 					if ($tTime <= \MTM\Utilities\Factories::getTime()->getMicroEpoch()) {
 						//could also be the server requires SSL/TLS
-						$error		= "Failed to connect. Server Timeout";
+						$error		= "Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server Timeout";
 						break;
 					}
 				}
@@ -462,7 +462,7 @@ class Client
 					}
 		
 					if ($eSecKey != $rSecKey) {
-						throw new \Exception("Failed to connect. Server returned invalid upgrade response");
+						throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server returned invalid upgrade response");
 					} else {
 						$this->setLastReceivedTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
 						$this->setIsConnected(true);
