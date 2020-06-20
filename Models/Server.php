@@ -19,6 +19,7 @@ class Server
 	protected $_protocols=array("tcp", "ssl", "tls");
 	protected $_sslCertObj=null;
 	protected $_parent=null;
+	protected $_clientTermCb=null;
 	protected $_children=array();
 
 	//will be triggered when new client attaches
@@ -76,6 +77,13 @@ class Server
 			throw new \Exception("Invalid Certificate");
 		} else {
 			$this->_sslCertObj		= $certObj;
+		}
+		return $this;
+	}
+	public function setClientTerminationCb($obj=null, $method=null)
+	{
+		if (is_object($obj) === true && is_string($method) === true) {
+			$this->_clientTermCb	= array($obj, $method);
 		}
 		return $this;
 	}
@@ -224,6 +232,10 @@ class Server
 				
 				$this->_children[]	= $newScObj;
 				$newObjs[]			= $newScObj;
+				
+				if ($this->_clientTermCb !== null) {
+					$newScObj->setTerminationCb($this->_clientTermCb[0], $this->_clientTermCb[1]);
+				}
 
 			} catch (\Exception $e) {
 				//connect failed or was rejected, we do nothing

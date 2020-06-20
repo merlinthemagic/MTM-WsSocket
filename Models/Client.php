@@ -504,10 +504,10 @@ class Client
 					stream_context_set_option($ssl, "ssl", "verify_peer_name", $this->getSslVerifyPeerName());
 					
 					//remove @ if you are debugging TLS issues
-					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT, $ssl);
+					$sockRes 	= stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT, $ssl);
 	
 				} else {
-					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT);
+					$sockRes 	= stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT);
 				}
 
 				if (is_resource($sockRes) === true) {
