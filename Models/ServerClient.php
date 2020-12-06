@@ -7,12 +7,18 @@ class ServerClient
 	protected $_uuid=null;
 	protected $_address=null;
 	protected $_socket=null;
+	
+	protected $_connectExpire=null;
+	protected $_connectBuffer=null;
+	protected $_connectEx=null;
+	
 	protected $_isConnected=false;
 	protected $_termStatus=false;
 	protected $_useMasking=false;
 	protected $_lastReceiveTime=null;
 	protected $_lastWriteTime=null;
 	protected $_minWriteDelay=null;
+	protected $_msgs=array();
 	
 	protected $_chunkSize=4096;
 	protected $_defaultConnectTime=2000;
@@ -99,7 +105,15 @@ class ServerClient
 	}
 	public function getMessages($timeout=-1)
 	{
-		return $this->getParent()->getParent()->getMessages($this, $timeout);
+		$msgs			= $this->getParent()->getParent()->getMessages($this, $timeout);
+		$msgs			= array_merge($this->_msgs, $msgs);
+		$this->_msgs	= array();
+		return $msgs;
+	}
+	public function getMessage($timeout=-1)
+	{
+		$this->_msgs	= $this->getMessages($timeout);
+		return array_shift($this->_msgs);
 	}
 	public function sendMessage($msg, $dataType="text")
 	{
@@ -282,110 +296,140 @@ class ServerClient
 	{
 		if ($this->getIsConnected() === false) {
 			if ($this->getTermStatus() === false) {
-				$this->setIsConnected(null);
-				
-				//disable blocking so our reads can function in code logic
-				stream_set_blocking($this->getSocket(), false);
-				stream_set_chunk_size($this->getSocket(), $this->getChunkSize());
-				
-				//cannnot use the read function, there seems to be a problem with reading all bytes
-				//if the client sends a message immediately after the connect we cannot place it in the buffer for some reason
-				//even though the sub_str function should be binary safe.
-				
-				//update: May 3rd. no fucking idea what you are talking abouk MM. I have reads that fail, but what did you find when you 
-				//determined there was a problem?... before you chose to brute force the issue. Quit making me (you) re-invent the wheel!
-				
-				$error			= null;
-				$errorWrite		= null;
-				$tTime			= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
-				$hData			= "";
-				$done			= false;
-				while($done === false) {
+				$cbTool	= \MTM\Utilities\Factories::getCallBacks()->getProcess();
+			
+				if ($this->_connectExpire === null) {
+					$this->_connectEx		= null;
+					$this->_connectExpire	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
 					
-					$rByte		= $this->getParent()->getParent()->rawRead($this, 1);
-					if ($rByte != "") {
-						$hData	.= $rByte;
-						if (strpos($hData, "\r\n\r\n") !== false) {
-							//headers must end in \r\n\r\n, we found the end of the header
-							$done	= true;
-						} elseif ($hData == "IsTestConnect") {
-							//throw so the server removes this client and stops spending time on it
-							//the real fix will be to make the connects async as well.
-							throw new \Exception("This is a test connect");
-						}
+					try {
 						
-					} else {
-						//no need to saturate the cpu
-						usleep(10000);
-					}
-					
-					if ($tTime <= \MTM\Utilities\Factories::getTime()->getMicroEpoch()) {
-						$error		= "Failed to connect. Client Timeout";
-						$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
-						$done		= true;
+						//disable blocking so our reads can function in code logic
+						stream_set_blocking($this->getSocket(), false);
+						stream_set_chunk_size($this->getSocket(), $this->getChunkSize());
+
+						$cbTool->addLoopCb($this, "connectCb");
+						
+					} catch (\Exception $e) {
+						$this->_connectExpire	= null;
+						throw $e;
 					}
 				}
-				//need to implement support for:
-				//Sec-WebSocket-Extensions: permessage-deflate
-				//Sec-WebSocket-Protocol: someProtocol, anotherProtocol
-				if ($error === null) {
-					
-					$secKey	= null;
-					$lines	= array_filter(explode("\n", $hData));
-					foreach ($lines as $line) {
-						if (preg_match("/^Sec-WebSocket-Key: (.*)$/i", $line, $match) == 1) {
-							//make sure the \r is also removed....
-							$secKey	= trim($match[1]);
-						}
-					}
-	
-					if ($secKey === null) {
-						
-						$error		= "Missing Header: Sec-WebSocket-Key";
-						$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
-						
-					} else {
-						
-						$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-						$oSecKey	= base64_encode(sha1($secKey . $strRfc6455, true));
-						
-						$heads = array(
-								"Upgrade"               => "websocket",
-								"Connection"            => "Upgrade",
-								"Sec-WebSocket-Accept"  => $oSecKey,
-								"WebSocket-Server"  	=> "Merlin-Ws-Server",
-						);
-	
-						//turn into a string we can send back to the client
-						$strHeader	= "HTTP/1.1 101 Switching Protocols";
-						foreach ($heads as $key => $head) {
-							$strHeader	.= "\r\n" . $key . ": " . $head;
-						}
-						$strHeader	.= "\r\n\r\n";
-						
-						//send the return
-						$wData		= $this->getParent()->getParent()->rawWrite($this, $strHeader);
-						if ($wData === false) {
-							$error		= "Header write error: " . $wData["error"];
-							$errorWrite	= "HTTP/1.1 500 Internal Error\r\n\r\n";
-						}
-					}
-				}
-				if ($error === null) {
-					$this->setIsConnected(true);
-					$this->setLastReceivedTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
-				} else {
-					if ($errorWrite != "") {
-						//tell the client how they messed up
-						$this->getParent()->getParent()->rawWrite($this, $errorWrite);
-					}
-					throw new \Exception("Connect failed. Error: " . $error);
-				}
 				
+				//this can build up, but we have to halt execution on the thread
+				while(true) {
+					if ($this->getIsConnected() === true) {
+						file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Ready " . getmypid() ." - ".$this->getAddress(). "\n", FILE_APPEND);
+						break;
+					} elseif ($this->_connectEx !== null) {
+						throw $this->_connectEx;
+					}
+					file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Not Ready " . getmypid() ." - ".$this->getAddress(). "\n", FILE_APPEND);
+					$cbTool->runOnce();
+				}
+			
 			} else {
 				throw new \Exception("Cannot connect, socket terminated");
 			}
 		}
 		return $this;
+	}
+	public function connectCb()
+	{
+		try {
+			
+			$cTime	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+			if ($this->_connectExpire > $cTime) {
+				
+				//cannnot use the read function, there seems to be a problem with reading all bytes
+				//if the client sends a message immediately after the connect we cannot place it in the buffer for some reason
+				//even though the sub_str function should be binary safe.
+				
+				//update: May 3rd. no fucking idea what you are talking abouk MM. I have reads that fail, but what did you find when you
+				//determined there was a problem?... before you chose to brute force the issue. Quit making me (you) re-invent the wheel!
+				while(true) {
+					
+					$rByte		= $this->getParent()->getParent()->rawRead($this, 1);
+					if ($rByte != "") {
+						$this->_connectBuffer	.= $rByte;
+						if (strpos($this->_connectBuffer, "\r\n\r\n") !== false) {
+							//headers must end in \r\n\r\n, we found the end of the header
+							
+							$secKey	= null;
+							$lines	= array_filter(explode("\n", $this->_connectBuffer));
+							foreach ($lines as $line) {
+								if (preg_match("/^Sec-WebSocket-Key: (.*)$/i", $line, $match) == 1) {
+									//make sure the \r is also removed....
+									$secKey	= trim($match[1]);
+								}
+							}
+							
+							if ($secKey === null) {
+								
+								$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
+								$this->getParent()->getParent()->rawWrite($this, $errorWrite);
+								throw new \Exception("Missing Header: Sec-WebSocket-Key");
+							
+							} else {
+								
+								$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+								$oSecKey	= base64_encode(sha1($secKey . $strRfc6455, true));
+								
+								$heads = array(
+										"Upgrade"               => "websocket",
+										"Connection"            => "Upgrade",
+										"Sec-WebSocket-Accept"  => $oSecKey,
+										"WebSocket-Server"  	=> "Merlin-Ws-Server",
+								);
+								
+								//turn into a string we can send back to the client
+								$strHeader	= "HTTP/1.1 101 Switching Protocols";
+								foreach ($heads as $key => $head) {
+									$strHeader	.= "\r\n" . $key . ": " . $head;
+								}
+								$strHeader	.= "\r\n\r\n";
+								
+								//send the return
+								$wData		= $this->getParent()->getParent()->rawWrite($this, $strHeader);
+								if ($wData === false) {
+									$errorWrite	= "HTTP/1.1 500 Internal Error\r\n\r\n";
+									$this->getParent()->getParent()->rawWrite($this, $errorWrite);
+									throw new \Exception("Header write error");
+								} else {
+									\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+									$this->setLastReceivedTime($cTime);
+									$this->setIsConnected(true);
+									$this->_connectExpire	= null;
+									$this->_connectBuffer	= null;
+									$this->_connectEx		= null;
+									//success
+									
+									break;
+								}
+							}
+
+						} elseif ($this->_connectBuffer == "IsTestConnect") {
+							//throw so the server removes this client and stops spending time on it
+							throw new \Exception("This is a test connect");
+						}
+						
+					} else {
+						//not completed yet
+						break;
+					}
+				}
+				
+			} else {
+				$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
+				$this->getParent()->getParent()->rawWrite($this, $errorWrite);
+				throw new \Exception("Failed to connect. Client Timeout");
+			}
+			
+		} catch (\Exception $e) {
+			\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+			$this->_connectExpire	= null;
+			$this->_connectBuffer	= null;
+			$this->_connectEx		= $e;
+		}
 	}
 }
