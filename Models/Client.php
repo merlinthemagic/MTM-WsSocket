@@ -27,7 +27,6 @@ class Client
 	protected $_connectEx=null;
 	protected $_isConnected=false;
 	protected $_termStatus=false;
-	protected $_defaultConnectTime=2000;
 	
 	protected $_defaultReadTime=30000;
 	protected $_defaultWriteTime=30000;
@@ -44,7 +43,7 @@ class Client
 	protected $_parent=null;
 
 	//will be triggered when client has terminated
-	protected $_termCb=null;
+	protected $_termCbs=array();
 	
 	public function __destruct()
 	{
@@ -88,52 +87,52 @@ class Client
 	public function terminate($throw=true)
 	{
 		if ($this->getTermStatus() === false) {
-			
 			$this->_termStatus	= null;
 			$errObj				= null;
-			
 			if ($this->getIsConnected() === true) {
-				
-				//we are initiating the shutdown, send a message to the other side
-				try {
-					
-					//default all is good message. Termination Codes Src: https://tools.ietf.org/html/rfc6455#section-7.4.1
-					$termCode	= 1000;
-					$termMsg	= "GoodByeServer";
-					$msg		= "";
-					$termbin	= sprintf("%016b", $termCode);
-					$binBytes	= str_split($termbin, 8);
-					foreach ($binBytes as $binByte) {
-						$msg .= chr(bindec($binByte));
+				if (is_resource($this->_socket) === true) {
+					//we are initiating the shutdown, send a message to the other side
+					try {
+						
+						//default return is "all is good" message (1000). Termination Codes Src: https://tools.ietf.org/html/rfc6455#section-7.4.1
+						$termCode	= 1000;
+						$termMsg	= "GoodByeServer";
+						$msg		= "";
+						$termbin	= sprintf("%016b", $termCode);
+						$binBytes	= str_split($termbin, 8);
+						foreach ($binBytes as $binByte) {
+							$msg .= chr(bindec($binByte));
+						}
+						$msg .= $termMsg;
+						
+						$this->sendMessage($msg, "close");
+						
+						//we are expecting the server to ack the close and return our message
+						//was tested on gdax
+						$this->getMessages(1000);
+						
+					} catch (\Exception $e) {
+						$errObj	= $e;
+						$e		= null;
 					}
-					$msg .= $termMsg;
-					
-					$this->sendMessage($msg, "close");
-					
-					//we are expecting the server to ack the close and return our message
-					//was tested on gdax
-					$this->getMessages(1000);
-					
-				} catch (\Exception $e) {
-					$errObj	= $e;
-					$e		= null;
+				} else {
+					$errObj	= new \Exception("Unable to send goodbye, socket already closed");
+				}
+				//clean up so the socket can be used again
+				if (is_resource($this->_socket) === true) {
+					fclose($this->_socket);
 				}
 			}
-			
-			//clean up so the socket can be used again
-			if (is_resource($this->_socket) === true) {
-				fclose($this->_socket);
-			}
-			
+
 			$this->_socket			= null;
 			$this->_isConnected		= false;
 			$this->_termStatus		= true;
 			$this->_buffData		= null;
 			$this->_lastReceiveTime	= null;
 			
-			if ($this->_termCb !== null) {
+			foreach($this->_termCbs as $cb) {
 				try {
-					call_user_func_array($this->_termCb, array($this));
+					call_user_func_array($cb, array($this));
 				} catch (\Exception $e) {
 				}
 			}
@@ -145,7 +144,7 @@ class Client
 	public function setTerminationCb($obj=null, $method=null)
 	{
 		if (is_object($obj) === true && is_string($method) === true) {
-			$this->_termCb	= array($obj, $method);
+			$this->_termCbs[]	= array($obj, $method);
 		}
 		return $this;
 	}
@@ -198,7 +197,7 @@ class Client
 	public function getUuid()
 	{
 		if ($this->_uuid === null) {
-			$this->_uuid		= uniqid("wsClient", true);
+			$this->_uuid		= \MTM\Utilities\Factories::getGuids()->getV4()->get(false);
 		}
 		return $this->_uuid;
 	}
@@ -243,15 +242,6 @@ class Client
 	{
 		//max amount of data to send at a time
 		return $this->_chunkSize;
-	}
-	public function setDefaultConnectTime($mSecs)
-	{
-		$this->_defaultConnectTime	= intval($mSecs);
-		return $this;
-	}
-	public function getDefaultConnectTime()
-	{
-		return $this->_defaultConnectTime;
 	}
 	public function setDefaultReadTime($mSecs)
 	{
@@ -298,11 +288,17 @@ class Client
 		if (
 			$this->_isConnected === true
 			&& $this->_termStatus === false
-			&& $this->getMetaInfo()->eof === true
 		) {
-			//socket has been terminated by the remote end going away
-			$this->_isConnected	= false;
-			$this->terminate(false);
+			$metaObj	= $this->getMetaInfo(false);
+			$metaObj	= $this->getMetaInfo(false);
+			if (
+				$metaObj === null
+				|| $metaObj->eof === true
+			) {
+				//socket has been terminated by the remote end going away
+				$this->_isConnected	= false;
+				$this->terminate(false);
+			}
 		}
 		return $this->_isConnected;
 	}
@@ -376,23 +372,32 @@ class Client
 	{
 		return $this->getParent()->getIsEmpty($this);
 	}
-	public function getMetaInfo()
+	public function getMetaInfo($throw=true)
 	{
 		//$metaData->unread_bytes, this is bytes not read since last read.
 		//it cannot be used to determine if there is data pending
-		$rData	= stream_get_meta_data($this->getSocket());
-		$hObj	= new \stdClass();
-		foreach ($rData as $key => $val) {
-			if (is_array($val) === false) {
-				$hObj->$key	= $val;
-			} else {
-				$hObj->$key	= new \stdClass();
-				foreach ($val as $sKey => $sVal) {
-					$hObj->$key->$sKey	= $sVal;
+		$sockRes	= $this->getSocket();
+		if (is_resource($sockRes) === true) {
+			
+			$rData	= stream_get_meta_data($sockRes);
+			$hObj	= new \stdClass();
+			foreach ($rData as $key => $val) {
+				if (is_array($val) === false) {
+					$hObj->$key	= $val;
+				} else {
+					$hObj->$key	= new \stdClass();
+					foreach ($val as $sKey => $sVal) {
+						$hObj->$key->$sKey	= $sVal;
+					}
 				}
 			}
+			return $hObj;
+		
+		} elseif ($throw === true) {
+			throw new \Exception("Cannot get meta data, client socket terminated");
+		} else {
+			return null;
 		}
-		return $hObj;
 	}
 	public function connect()
 	{
@@ -402,7 +407,7 @@ class Client
 			
 			if ($this->_connectExpire === null) {
 				$this->_connectEx		= null;
-				$this->_connectExpire	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
+				$this->_connectExpire	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + $this->getTimeout();
 	
 				try {
 					
@@ -447,12 +452,10 @@ class Client
 			//this can build up, but we have to halt execution on the thread
 			while(true) {
 				if ($this->getIsConnected() === true) {
-					file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Ready " . print_r(getmypid()."-".$this->getHostname().":".$this->getPort(), true) . "\n", FILE_APPEND);
 					break;
 				} elseif ($this->_connectEx !== null) {
 					throw $this->_connectEx;
 				}
-				file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Not Ready " . print_r(getmypid()."-".$this->getHostname().":".$this->getPort(), true) . "\n", FILE_APPEND);
 				$cbTool->runOnce();
 			}
 		}
@@ -509,7 +512,7 @@ class Client
 				}
 				
 			} else {
-				throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server Timeout");
+				throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". The server failed to respond in time");
 			}
 		
 		} catch (\Exception $e) {
@@ -544,10 +547,10 @@ class Client
 					stream_context_set_option($ssl, "ssl", "verify_peer_name", $this->getSslVerifyPeerName());
 					
 					//remove @ if you are debugging TLS issues
-					$sockRes 	= stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT, $ssl);
+					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT, $ssl);
 	
 				} else {
-					$sockRes 	= stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT);
+					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT);
 				}
 
 				if (is_resource($sockRes) === true) {
@@ -556,7 +559,7 @@ class Client
 					//if you get error: Address already in use, know that if the port was in use by another socket
 					//that is now shutdown, it will take a few seconds before the port is available again
 					//but it will be freed up eventually
-					throw new \Exception("Socket Error: " . $errstr, $errno);
+					throw new \Exception("Connection to: ".$this->getHostname().":".$this->getPort().", Socket Error: ".$errstr, $errno);
 				}
 			
 			} else {

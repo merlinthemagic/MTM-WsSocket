@@ -30,7 +30,7 @@ class ServerClient
 	protected $_parent=null;
 	
 	//will be triggered when client has terminated
-	protected $_termCb=null;
+	protected $_termCbs=array();
 
 	public function __destruct()
 	{
@@ -44,6 +44,7 @@ class ServerClient
 			
 			$pObj	= $this->getParent();
 			if (is_object($pObj) === true) {
+
 				//remove from parent
 				$pObj->removeClient($this);
 
@@ -85,9 +86,9 @@ class ServerClient
 			$this->_isConnected		= false;
 			$this->_termStatus		= true;
 			
-			if ($this->_termCb !== null) {
+			foreach ($this->_termCbs as $cb) {
 				try {
-					call_user_func_array($this->_termCb, array($this));
+					call_user_func_array($cb, array($this));
 				} catch (\Exception $e) {
 				}
 			}
@@ -99,7 +100,7 @@ class ServerClient
 	public function setTerminationCb($obj=null, $method=null)
 	{
 		if (is_object($obj) === true && is_string($method) === true) {
-			$this->_termCb	= array($obj, $method);
+			$this->_termCbs[]	= array($obj, $method);
 		}
 		return $this;
 	}
@@ -128,7 +129,7 @@ class ServerClient
 	public function getUuid()
 	{
 		if ($this->_uuid === null) {
-			$this->_uuid		= uniqid("wsServerClient", true);
+			$this->_uuid		= \MTM\Utilities\Factories::getGuids()->getV4()->get(false);
 		}
 		return $this->_uuid;
 	}
@@ -212,11 +213,16 @@ class ServerClient
 		if (
 			$this->_isConnected === true
 			&& $this->_termStatus === false
-			&& $this->getMetaInfo()->eof === true
 		) {
-			//socket has been terminated by the remote end going away
-			$this->_isConnected	= false;
-			$this->terminate(false);
+			$metaObj	= $this->getMetaInfo(false);
+			if (
+				$metaObj === null
+				|| $metaObj->eof === true
+			) {
+				//socket has been terminated by the remote end going away
+				$this->_isConnected	= false;
+				$this->terminate(false);
+			}
 		}
 		return $this->_isConnected;
 	}
@@ -274,23 +280,31 @@ class ServerClient
 	{
 		return $this->getParent()->getParent()->getIsEmpty($this);
 	}
-	public function getMetaInfo()
+	public function getMetaInfo($throw=true)
 	{
 		//$metaData->unread_bytes, this is bytes not read since last read.
 		//it cannot be used to determine if there is data pending
-		$rData	= stream_get_meta_data($this->getSocket());
-		$hObj	= new \stdClass();
-		foreach ($rData as $key => $val) {
-			if (is_array($val) === false) {
-				$hObj->$key	= $val;
-			} else {
-				$hObj->$key	= new \stdClass();
-				foreach ($val as $sKey => $sVal) {
-					$hObj->$key->$sKey	= $sVal;
+		$sockRes	= $this->getSocket();
+		if (is_resource($sockRes) === true) {
+			$rData	= stream_get_meta_data($sockRes);
+			$hObj	= new \stdClass();
+			foreach ($rData as $key => $val) {
+				if (is_array($val) === false) {
+					$hObj->$key	= $val;
+				} else {
+					$hObj->$key	= new \stdClass();
+					foreach ($val as $sKey => $sVal) {
+						$hObj->$key->$sKey	= $sVal;
+					}
 				}
 			}
+			return $hObj;
+			
+		} elseif ($throw === true) {
+			throw new \Exception("Cannot get meta data, server client socket terminated");
+		} else {
+			return null;
 		}
-		return $hObj;
 	}
 	public function connect()
 	{
@@ -319,12 +333,10 @@ class ServerClient
 				//this can build up, but we have to halt execution on the thread
 				while(true) {
 					if ($this->getIsConnected() === true) {
-						file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Ready " . getmypid() ." - ".$this->getAddress(). "\n", FILE_APPEND);
 						break;
 					} elseif ($this->_connectEx !== null) {
 						throw $this->_connectEx;
 					}
-					file_put_contents("/dev/shm/merlin.txt", __METHOD__ . " - Not Ready " . getmypid() ." - ".$this->getAddress(). "\n", FILE_APPEND);
 					$cbTool->runOnce();
 				}
 			

@@ -30,7 +30,7 @@ class API
 		
 		$wData	= $this->socketWrite($clientObj, $msg, $dataType);
 		if (strlen($wData["error"]) > 0) {
-			throw new \Exception("Send Message Write Type: " . $dataType . ", Error: " . $wData["error"]);
+			throw new \Exception("Send Message Write Type: " . $dataType . ", Error: " . $wData["error"], $wData["code"]);
 		}
 		return $this;
 	}
@@ -56,8 +56,10 @@ class API
 			if ($isEmpty === false) {
 				$clientObj->setLastReceivedTime($cTime);
 				$rData		= $this->socketRead($clientObj, $clientObj->getDefaultReadTime());
-				$msgs[]		= $rData["data"];
-				
+				if ($rData["dataType"] != "ping" && $rData["dataType"] != "pong") {
+					$msgs[]		= $rData["data"];
+				}
+
 			} elseif ($cTime >= $tTime || count($msgs) > 0) {
 				//done, we have emptied the message queue or run out of time
 				break;
@@ -72,7 +74,11 @@ class API
 	public function rawRead($clientObj, $byteCount)
 	{
 		//we are not blocking so its a max bytes to read, does not mean you will get that much data back
-		return @fread($clientObj->getSocket(), $byteCount);
+		$sockRes	= $clientObj->getSocket();
+		if (is_resource($sockRes) === false) {
+			throw new \Exception("Cannot read, client socket is not a resource");
+		}
+		return @fread($sockRes, $byteCount);
 	}
 	public function read($clientObj, $byteCount, $maxWaitMs=0)
 	{
@@ -314,7 +320,22 @@ class API
 					$termBin	= $return["data"][0] . $return["data"][1];
 					$termStat	= bindec(sprintf("%08b%08b", ord($rData["data"][0]), ord($rData["data"][1])));
 					$msg		= $termBin . "Close acknowledged: " . $termStat;
-					$this->sendMessage($clientObj, $msg, "close");
+					
+					try {
+						$this->sendMessage($clientObj, $msg, "close");
+					} catch (\Exception $e) {
+						switch ($e->getCode()) {
+							case 4476:
+								//the client cut the connection after close
+								break;
+							case 1886:
+								//the client closed the socket already
+								//our write timed out
+								break;
+							default:
+								throw $e;
+						}
+					}
 				}
 				
 				//tell the client that the connection is no longer open
@@ -342,13 +363,22 @@ class API
 	}
 	public function rawWrite($clientObj, $data)
 	{
-		return @fwrite($clientObj->getSocket(), $data);
+		$sockRes	= $clientObj->getSocket();
+		if (is_resource($sockRes) === false) {
+			throw new \Exception("Cannot write, client socket is not a resource", 11988);
+		}
+		$wBytes	= @fwrite($sockRes, $data);
+		if ($wBytes === false) {
+			throw new \Exception("Failed to write to socket", 11989);
+		}
+		return $wBytes;
 	}
 	public function write($clientObj, $data, $maxWaitMs=0)
 	{
 		$maxWait			= $maxWaitMs / 1000;
 		$return				= array();
 		$return["error"]	= null;
+		$return["code"]		= 0;
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 		
 		try {
@@ -363,9 +393,8 @@ class API
 				if ($byteCount == $wBytes) {
 					$done				= true;
 				} elseif (($exeTime - $return["sTime"]) > $maxWait) {
-					//read timeout
-					$return["error"]	= "Timeout";
-					$done				= true;
+					//write timeout
+					throw new \Exception("Timeout", 1886);
 				} elseif ($wBytes === 0) {
 					//we have time for another attempt
 					//socket might be out of buffer space
@@ -373,13 +402,13 @@ class API
 					usleep(10000);
 				} else {
 					//partial write
-					$return["error"]	= "Partial write: " . $wBytes . ", bytes of: " . $byteCount;
-					$done				= true;
+					throw new \Exception("Partial write: " . $wBytes . ", bytes of: " . $byteCount, 4476);
 				}
 			}
 
 		} catch (\Exception $e) {
 			$return["error"]	= $e->getMessage();
+			$return["code"]		= $e->getCode();
 		}
 		
 		$return["eTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
@@ -390,6 +419,7 @@ class API
 	{
 		$return				= array();
 		$return["error"]	= null;
+		$return["code"]		= 0;
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 		
 		try {
@@ -478,7 +508,7 @@ class API
 				//finally send the darn thing
 				$wData	= $this->write($clientObj, $payloadBin, $clientObj->getDefaultWriteTime());
 				if (strlen($wData["error"]) > 0) {
-					throw new \Exception("Write Error: " . $wData["error"]);
+					throw new \Exception("Write Error: " . $wData["error"], $wData["code"]);
 				} else {
 					$clientObj->setLastWriteTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
 				}
@@ -486,6 +516,7 @@ class API
 			
 		} catch (\Exception $e) {
 			$return["error"]	= $e->getMessage();
+			$return["code"]		= $e->getCode();
 		}
 		
 		$return["eTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();

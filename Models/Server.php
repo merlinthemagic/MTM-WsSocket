@@ -220,7 +220,7 @@ class Server
 			$newScObj->setChunkSize($this->getClientDefaultChunkSize());
 			$newScObj->setMinWriteDelay($this->getClientDefaultWriteDelay());
 			try {
-				
+			
 				$newScObj->connect();
 				if ($this->_newClientCb !== null) {
 					//throw if you do not want to allow this client, only a true return will allow
