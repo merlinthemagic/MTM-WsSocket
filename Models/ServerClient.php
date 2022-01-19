@@ -21,7 +21,7 @@ class ServerClient
 	protected $_msgs=array();
 	
 	protected $_chunkSize=4096;
-	protected $_defaultConnectTime=2000;
+	protected $_defaultConnectTime=5000;
 	protected $_defaultReadTime=30000;
 	protected $_defaultWriteTime=30000;
 
@@ -315,7 +315,7 @@ class ServerClient
 				if ($this->_connectExpire === null) {
 					$this->_connectEx		= null;
 					$this->_connectExpire	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + ($this->getDefaultConnectTime() / 1000);
-					
+
 					try {
 						
 						//disable blocking so our reads can function in code logic
@@ -323,7 +323,6 @@ class ServerClient
 						stream_set_chunk_size($this->getSocket(), $this->getChunkSize());
 
 						$cbTool->addLoopCb($this, "connectCb");
-						
 					} catch (\Exception $e) {
 						$this->_connectExpire	= null;
 						throw $e;
@@ -415,7 +414,6 @@ class ServerClient
 									$this->_connectBuffer	= null;
 									$this->_connectEx		= null;
 									//success
-									
 									break;
 								}
 							}

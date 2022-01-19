@@ -375,34 +375,32 @@ class API
 	}
 	public function write($clientObj, $data, $maxWaitMs=0)
 	{
+		$timeFact			= \MTM\Utilities\Factories::getTime();
 		$maxWait			= $maxWaitMs / 1000;
 		$return				= array();
 		$return["error"]	= null;
 		$return["code"]		= 0;
-		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+		$return["sTime"]	= $timeFact->getMicroEpoch();
 		
 		try {
 			
 			$done		= false;
-			$byteCount	= strlen($data);
+			$tBytes		= strlen($data); //total bytes
+			$sBytes		= 0; //sent bytes
+			$rData		= $data; //remaining data
 			while ($done === false) {
 
-				$wBytes		= $this->rawWrite($clientObj, $data);
-				$exeTime	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
-				
-				if ($byteCount == $wBytes) {
+				$sBytes		+= $this->rawWrite($clientObj, $rData);
+				if ($tBytes == $sBytes) {
 					$done				= true;
-				} elseif (($exeTime - $return["sTime"]) > $maxWait) {
+				} elseif (($timeFact->getMicroEpoch() - $return["sTime"]) > $maxWait) {
 					//write timeout
 					throw new \Exception("Timeout", 1886);
-				} elseif ($wBytes === 0) {
-					//we have time for another attempt
-					//socket might be out of buffer space
-					//wait for a tiny bit no need to saturate the CPU
-					usleep(10000);
 				} else {
-					//partial write
-					throw new \Exception("Partial write: " . $wBytes . ", bytes of: " . $byteCount, 4476);
+					//we have time for another attempt, socket might be out of buffer space
+					//wait for a tiny bit no need to saturate the CPU
+					$rData		= substr($data, $sBytes);
+					usleep(10000);
 				}
 			}
 
@@ -411,7 +409,7 @@ class API
 			$return["code"]		= $e->getCode();
 		}
 		
-		$return["eTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+		$return["eTime"]	= $timeFact->getMicroEpoch();
 		
 		return $return;
 	}
