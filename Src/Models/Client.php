@@ -41,7 +41,7 @@ class Client
 	protected $_sslVerifyPeer=true;
 	protected $_sslVerifyPeerName=true;
 	protected $_parent=null;
-
+	
 	//will be triggered when client has terminated
 	protected $_termCbs=array();
 	
@@ -123,7 +123,7 @@ class Client
 					fclose($this->_socket);
 				}
 			}
-
+			
 			$this->_socket			= null;
 			$this->_isConnected		= false;
 			$this->_termStatus		= true;
@@ -286,21 +286,21 @@ class Client
 	public function getIsConnected()
 	{
 		if (
-			$this->_isConnected === true
-			&& $this->_termStatus === false
-		) {
-			$metaObj	= $this->getMetaInfo(false);
-			$metaObj	= $this->getMetaInfo(false);
-			if (
-				$metaObj === null
-				|| $metaObj->eof === true
-			) {
-				//socket has been terminated by the remote end going away
-				$this->_isConnected	= false;
-				$this->terminate(false);
-			}
-		}
-		return $this->_isConnected;
+				$this->_isConnected === true
+				&& $this->_termStatus === false
+				) {
+					$metaObj	= $this->getMetaInfo(false);
+					$metaObj	= $this->getMetaInfo(false);
+					if (
+							$metaObj === null
+							|| $metaObj->eof === true
+							) {
+								//socket has been terminated by the remote end going away
+								$this->_isConnected	= false;
+								$this->terminate(false);
+							}
+				}
+				return $this->_isConnected;
 	}
 	public function setIsConnected($bool)
 	{
@@ -392,7 +392,7 @@ class Client
 				}
 			}
 			return $hObj;
-		
+			
 		} elseif ($throw === true) {
 			throw new \Exception("Cannot get meta data, client socket terminated");
 		} else {
@@ -408,7 +408,7 @@ class Client
 			if ($this->_connectExpire === null) {
 				$this->_connectEx		= null;
 				$this->_connectExpire	= \MTM\Utilities\Factories::getTime()->getMicroEpoch() + $this->getTimeout();
-	
+				
 				try {
 					
 					//disable blocking so our reads can function in code logic without blocking
@@ -442,7 +442,7 @@ class Client
 					}
 					
 					$cbTool->addLoopCb($this, "connectCb");
-
+					
 				} catch (\Exception $e) {
 					$this->_connectExpire	= null;
 					throw $e;
@@ -469,7 +469,7 @@ class Client
 			if ($this->_connectExpire > $cTime) {
 				
 				while(true) {
-				
+					
 					//cannnot use the read function, there seems to be a problem with reading all bytes
 					//if the server sends a message immediately after the connect we cannot place it in the buffer for some reason
 					//even though the sub_str function should be binary safe.
@@ -514,7 +514,7 @@ class Client
 			} else {
 				throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". The server failed to respond in time");
 			}
-		
+			
 		} catch (\Exception $e) {
 			\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
 			$this->_connectExpire	= null;
@@ -527,7 +527,7 @@ class Client
 		if ($this->_socket === null) {
 			
 			if ($this->getTermStatus() === false) {
-
+				
 				if ($this->getProtocol() === null || $this->getHostname() === null || $this->getPort() === null || $this->getTimeout() === null) {
 					throw new \Exception("Missing connection parameters");
 				}
@@ -541,27 +541,34 @@ class Client
 						$fileObj	= \MTM\FS\Factories::getFiles()->getTempFile("pem")->setContent($this->getSslCertificate()->getChainAsString());
 						stream_context_set_option($ssl, "ssl", "cafile", $fileObj->getPathAsString());
 					}
-	
+					
 					stream_context_set_option($ssl, "ssl", "allow_self_signed", $this->getSslAllowSelfSigned());
 					stream_context_set_option($ssl, "ssl", "verify_peer", $this->getSslVerifyPeer());
 					stream_context_set_option($ssl, "ssl", "verify_peer_name", $this->getSslVerifyPeerName());
 					
 					//remove @ if you are debugging TLS issues
+					//client cannot use ip with tls as the certificate hostname cannot be verified (if not part of CN)
 					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT, $ssl);
-	
+					
 				} else {
 					$sockRes 	= @stream_socket_client($strConn, $errno, $errstr, $this->getTimeout(), STREAM_CLIENT_CONNECT);
 				}
-
+				
 				if (is_resource($sockRes) === true) {
 					$this->_socket	= $sockRes;
 				} else {
 					//if you get error: Address already in use, know that if the port was in use by another socket
 					//that is now shutdown, it will take a few seconds before the port is available again
 					//but it will be freed up eventually
-					throw new \Exception("Connection to: ".$this->getHostname().":".$this->getPort().", Socket Error: ".$errstr, $errno);
+					if ($errstr == "" && $errno == "") {
+						$lastErr	= error_get_last();
+						if ($lastErr !== null) {
+							$errstr		= $lastErr["message"];
+						}
+					}
+					throw new \Exception("Connection to: ".$this->getHostname().":".$this->getPort().", Socket Error: '".$errstr."', '".$errno."'");
 				}
-			
+				
 			} else {
 				throw new \Exception("Socket is terminated");
 			}
@@ -571,7 +578,7 @@ class Client
 	protected function getSocketKey()
 	{
 		if ($this->_socketKey === null) {
-
+			
 			$rKey	= "";
 			$aChars = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 			$cLen	= strlen($aChars) - 1;
