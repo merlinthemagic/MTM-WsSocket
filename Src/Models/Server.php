@@ -58,7 +58,7 @@ class Server
 	{
 		$protocol	= strtolower(trim($protocol));
 		if (in_array($protocol, $this->_protocols) === false) {
-			throw new \Exception("Invalid Protocol: " . $protocol);
+			throw new \Exception("Invalid Protocol: " . $protocol, 42790);
 		}
 		
 		$timeout	= intval(round($timeoutMs / 1000));
@@ -74,7 +74,7 @@ class Server
 	{
 		if ($certObj instanceof \MTM\Certs\Models\CRT === false) {
 			//should be a certificate object containing the chain back to the root CA
-			throw new \Exception("Invalid Certificate");
+			throw new \Exception("Invalid Certificate", 42791);
 		} else {
 			$this->_sslCertObj		= $certObj;
 		}
@@ -207,7 +207,7 @@ class Server
 			stream_set_blocking($this->getSocket(), false);
 		} else {
 			//http://php.net/manual/en/function.stream-socket-accept.php
-			throw new \Exception("UDP not yet handled");
+			throw new \Exception("UDP not yet handled", 42792);
 		}
 
 		if (is_resource($clientRes) === true) {
@@ -219,7 +219,7 @@ class Server
 			} elseif ($asyncMethod === "eventloop") {
 				$newScObj	= new \MTM\WsSocket\Models\ServerClients\EventLoop();
 			} else {
-				throw new \Exception("Not handled for async method: ".$asyncMethod, 38564);
+				throw new \Exception("Not handled for async method: ".$asyncMethod, 42793);
 			}
 
 			$newScObj->setParent($this)->setSocket($clientRes)->setAddress($peerName);
@@ -234,7 +234,7 @@ class Server
 					//throw if you do not want to allow this client, only a true return will allow
 					$isValid	= call_user_func_array($this->_newClientCb, array($newScObj));
 					if ($isValid !== true) {
-						throw new \Exception("Consumer error, rather safe than sorry. Reject!");
+						throw new \Exception("Consumer error, rather safe than sorry. Reject!", 42794);
 					}
 				}
 				
@@ -265,9 +265,9 @@ class Server
 		if ($this->isInit() === false) {
 			
 			if ($this->getProtocol() === null || $this->getHostname() === null || $this->getPort() === null || $this->getTimeout() === null) {
-				throw new \Exception("Missing connection parameters");
+				throw new \Exception("Missing connection parameters", 42795);
 			} elseif ($this->isTerm() === true) {
-				throw new \Exception("Server terminated");
+				throw new \Exception("Server terminated", 42796);
 			}
 			
 			$strConn	= $this->getProtocol() . "://". $this->getHostname() .":" . $this->getPort() . "";
@@ -276,7 +276,7 @@ class Server
 				//PEM formatted cert
 				$ssl		= stream_context_create();
 				if ($this->getSslCertificate() === null) {
-					throw new \Exception("Missing SSL connection parameters");
+					throw new \Exception("Missing SSL connection parameters", 42797);
 				} else {
 					$fileObj	= \MTM\FS\Factories::getFiles()->getTempFile("pem")->setContent($this->getSslCertificate()->getChainAsString());
 					stream_context_set_option($ssl, "ssl", "local_cert", $fileObj->getPathAsString());
@@ -311,7 +311,7 @@ class Server
 				//if you get error: Address already in use, know that if the port was in use by another socket
 				//that is now shutdown, it will take a few seconds before the port is available again
 				//but it will be freed up eventually
-				throw new \Exception("Failed to create socket. Error: " . $errstr . " - " . $errno);
+				throw new \Exception("Failed to create socket. Error: '".$errstr. "' - '".$errno."'", 42798);
 			}
 		}
 		return $this->_socket;

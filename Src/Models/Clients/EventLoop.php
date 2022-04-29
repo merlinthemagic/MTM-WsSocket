@@ -45,7 +45,7 @@ class EventLoop extends \MTM\WsSocket\Models\Client
 					//open the socket and send the header data, go directly to the raw writer function since we are sending text not binary
 					$wData	= $this->getParent()->write($this, $strHeader);
 					if (strlen($wData["error"]) > 0) {
-						throw new \Exception("Connect failed. Error: " . $wData["error"]);
+						throw new \Exception("Connect failed. Error: " . $wData["error"], 86126);
 					}
 					
 					
@@ -65,8 +65,10 @@ class EventLoop extends \MTM\WsSocket\Models\Client
 					break;
 				} elseif ($this->_connectEx !== null) {
 					throw $this->_connectEx;
+				} elseif ($this->_eventObj === null) {
+					throw new \Exception("Event was removed", 86128);
 				}
-				$this->_eventObj->setNextRun(0);
+				$this->_eventObj->setNextRun(5);
 				$evTool->runOnce();
 			}
 		}
@@ -75,7 +77,6 @@ class EventLoop extends \MTM\WsSocket\Models\Client
 	public function connectCb($evObj)
 	{
 		try {
-			
 			$cTime	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 			if ($this->_connectExpire > $cTime) {
 				
@@ -103,7 +104,7 @@ class EventLoop extends \MTM\WsSocket\Models\Client
 								}
 							}
 							if ($eSecKey != $rSecKey) {
-								throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server returned invalid upgrade response");
+								throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server returned invalid upgrade response", 86127);
 							} else {
 								//success
 								$this->setLastReceivedTime($cTime);
@@ -123,15 +124,15 @@ class EventLoop extends \MTM\WsSocket\Models\Client
 				}
 				
 			} else {
-				throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". The server failed to respond in time");
+				throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". The server failed to respond in time", 86128);
 			}
 			
 		} catch (\Exception $e) {
+			$this->_eventObj->terminate();
+			$this->_eventObj		= null;
 			$this->_connectExpire	= null;
 			$this->_connectBuffer	= null;
 			$this->_connectEx		= $e;
-			$this->_eventObj->terminate();
-			$this->_eventObj		= null;
 		}
 	}
 }

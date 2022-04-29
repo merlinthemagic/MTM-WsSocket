@@ -53,7 +53,11 @@ abstract class Client
 	{
 		$protocol	= strtolower(trim($protocol));
 		if (in_array($protocol, $this->_protocols) === false) {
-			throw new \Exception("Invalid Protocol: " . $protocol);
+			throw new \Exception("Invalid Protocol: " . $protocol, 86129);
+		} elseif (is_int($timeout) === false || $timeout < 1 || $timeout > 600) {
+			throw new \Exception("Invalid timeout: " . $timeout, 86135);
+		} elseif (is_int($portNbr) === false || $portNbr < 1 || $portNbr > 65535) {
+			throw new \Exception("Invalid port: " . $portNbr, 86136);
 		}
 		
 		$this->_protocol	= $protocol;
@@ -75,7 +79,7 @@ abstract class Client
 	{
 		if ($certObj !== null && $certObj instanceof \MTM\Certs\Models\CRT === false) {
 			//should be a certificate object containing enough of the chain to confirm the server authenticity
-			throw new \Exception("Invalid Certificate");
+			throw new \Exception("Invalid Certificate", 86130);
 		} else {
 			$this->_sslCertObj			= $certObj;
 			$this->_sslVerifyPeer		= $verifyPeer;
@@ -169,30 +173,6 @@ abstract class Client
 	{
 		$this->getParent()->sendMessage($this, $msg, "ping");
 		return $this;
-	}
-	public function sendWait($msg, $dataType="text", $msTimeout=null)
-	{
-		//send a message and only return when the server replies
-		//ONLY the first response message is returned
-		//better implement a message protocol to give you the response
-		//this breaks async
-		if ($msTimeout === null) {
-			$msTimeout	= $this->getDefaultExecutionTime();
-		}
-		
-		$this->sendMessage($msg, $dataType);
-		
-		$tTime	= time() + ($msTimeout / 1000);
-		while (true) {
-			$msg	= $this->getMessage();
-			if ($msg !== null) {
-				return $msg;
-			} elseif ($tTime < time()) {
-				throw new \Exception("Server timed out responding");
-			} else {
-				usleep(10000);
-			}
-		}
 	}
 	public function getUuid()
 	{
@@ -394,7 +374,7 @@ abstract class Client
 			return $hObj;
 			
 		} elseif ($throw === true) {
-			throw new \Exception("Cannot get meta data, client socket terminated");
+			throw new \Exception("Cannot get meta data, client socket terminated", 86132);
 		} else {
 			return null;
 		}
@@ -406,7 +386,7 @@ abstract class Client
 			if ($this->getTermStatus() === false) {
 				
 				if ($this->getProtocol() === null || $this->getHostname() === null || $this->getPort() === null || $this->getTimeout() === null) {
-					throw new \Exception("Missing connection parameters");
+					throw new \Exception("Missing connection parameters", 86133);
 				}
 				
 				$strConn	= $this->getProtocol() . "://" . $this->getHostname() . ":" . $this->getPort() . "" . $this->getUriPath();
@@ -443,11 +423,11 @@ abstract class Client
 							$errstr		= $lastErr["message"];
 						}
 					}
-					throw new \Exception("Connection to: ".$this->getHostname().":".$this->getPort().", Socket Error: '".$errstr."', '".$errno."'");
+					throw new \Exception("Connection to: ".$this->getHostname().":".$this->getPort().", Socket Error: '".$errstr."', '".$errno."'", 86124);
 				}
 				
 			} else {
-				throw new \Exception("Socket is terminated");
+				throw new \Exception("Socket is terminated", 86125);
 			}
 		}
 		return $this->_socket;

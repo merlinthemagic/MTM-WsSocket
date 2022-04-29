@@ -301,7 +301,7 @@ abstract class ServerClient
 			return $hObj;
 			
 		} elseif ($throw === true) {
-			throw new \Exception("Cannot get meta data, server client socket terminated");
+			throw new \Exception("Cannot get meta data, server client socket terminated", 2950);
 		} else {
 			return null;
 		}

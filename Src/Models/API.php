@@ -30,7 +30,7 @@ class API
 		
 		$wData	= $this->socketWrite($clientObj, $msg, $dataType);
 		if (strlen($wData["error"]) > 0) {
-			throw new \Exception("Send Message Write Type: " . $dataType . ", Error: " . $wData["error"], $wData["code"]);
+			throw new \Exception("Send Message Write Type: ".$dataType.", Error: '".$wData["error"]."'", $wData["code"]);
 		}
 		return $this;
 	}
@@ -76,7 +76,7 @@ class API
 		//we are not blocking so its a max bytes to read, does not mean you will get that much data back
 		$sockRes	= $clientObj->getSocket();
 		if (is_resource($sockRes) === false) {
-			throw new \Exception("Cannot read, client socket is not a resource");
+			throw new \Exception("Cannot read, client socket is not a resource", 801);
 		}
 		return @fread($sockRes, $byteCount);
 	}
@@ -196,7 +196,7 @@ class API
 					$isLast	= true;
 				} else {
 					//malformed
-					throw new \Exception("Received broken header 4bit value: " . $byte1Ps[0]);
+					throw new \Exception("Received broken header 4bit value: '".$byte1Ps[0]."'", 802);
 				}
 				
 				//next 4 bits are the data type
@@ -506,7 +506,7 @@ class API
 				//finally send the darn thing
 				$wData	= $this->write($clientObj, $payloadBin, $clientObj->getDefaultWriteTime());
 				if (strlen($wData["error"]) > 0) {
-					throw new \Exception("Write Error: " . $wData["error"], $wData["code"]);
+					throw new \Exception("Write Error: '".$wData["error"]."'", $wData["code"]);
 				} else {
 					$clientObj->setLastWriteTime(\MTM\Utilities\Factories::getTime()->getMicroEpoch());
 				}
@@ -548,7 +548,7 @@ class API
 		if (in_array($type, $this->_dataCodes) === true) {
 			return $this->_dataCodes[$type];
 		} else {
-			throw new \Exception("Invalid Data type Name: " . $type);
+			throw new \Exception("Invalid Data type Name: " . $type, 803);
 		}
 	}
 	protected function getDataTypeName($code)
@@ -557,7 +557,7 @@ class API
 		if ($type !== false) {
 			return $type;
 		} else {
-			throw new \Exception("Invalid Datatype Code: " . $code);
+			throw new \Exception("Invalid Datatype Code: ".$code, 804);
 		}
 	}
 }
