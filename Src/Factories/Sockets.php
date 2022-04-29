@@ -16,7 +16,11 @@ class Sockets
 	}
 	public function getNewClient()
 	{
-		$newClient	= new \MTM\WsSocket\Models\Client();
+		if (\MTM\Utilities\Factories::getProcesses()->getEventLoop()->getStatus() === true) {
+			$newClient	= new \MTM\WsSocket\Models\Clients\EventLoop();
+		} else {
+			$newClient	= new \MTM\WsSocket\Models\Clients\Callback();
+		}
 		$newClient->setParent($this->getApi());
 		return $newClient;
 	}

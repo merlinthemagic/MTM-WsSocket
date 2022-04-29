@@ -213,7 +213,11 @@ class Server
 		if (is_resource($clientRes) === true) {
 
 			//found new client, add it to the
-			$newScObj			= new \MTM\WsSocket\Models\ServerClient();
+			if (\MTM\Utilities\Factories::getProcesses()->getEventLoop()->getStatus() === true) {
+				$newScObj	= new \MTM\WsSocket\Models\ServerClients\EventLoop();
+			} else {
+				$newScObj	= new \MTM\WsSocket\Models\ServerClients\Callback();
+			}
 			$newScObj->setParent($this)->setSocket($clientRes)->setAddress($peerName);
 			$newScObj->setDefaultReadTime($this->getClientDefaultMaxReadTime());
 			$newScObj->setDefaultWriteTime($this->getClientDefaultMaxWriteTime());
