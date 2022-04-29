@@ -8,7 +8,7 @@ class Callback extends \MTM\WsSocket\Models\ServerClient
 	{
 		if ($this->getIsConnected() === false) {
 			if ($this->getTermStatus() === false) {
-				$cbTool	= \MTM\Utilities\Factories::getCallBacks()->getProcess();
+				$cbTool	= \MTM\Utilities\Factories::getProcesses()->getCallBacks();
 			
 				if ($this->_connectExpire === null) {
 					$this->_connectEx		= null;
@@ -105,7 +105,7 @@ class Callback extends \MTM\WsSocket\Models\ServerClient
 									$this->getParent()->getParent()->rawWrite($this, $errorWrite);
 									throw new \Exception("Header write error");
 								} else {
-									\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+									\MTM\Utilities\Factories::getProcesses()->getCallBacks()->removeLoopCb($this, "connectCb");
 									$this->setLastReceivedTime($cTime);
 									$this->setIsConnected(true);
 									$this->_connectExpire	= null;
@@ -134,7 +134,7 @@ class Callback extends \MTM\WsSocket\Models\ServerClient
 			}
 			
 		} catch (\Exception $e) {
-			\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+			\MTM\Utilities\Factories::getProcesses()->getCallBacks()->removeLoopCb($this, "connectCb");
 			$this->_connectExpire	= null;
 			$this->_connectBuffer	= null;
 			$this->_connectEx		= $e;

@@ -8,7 +8,7 @@ class Callback extends \MTM\WsSocket\Models\Client
 	{
 		if ($this->getIsConnected() === false) {
 			
-			$cbTool	= \MTM\Utilities\Factories::getCallBacks()->getProcess();
+			$cbTool	= \MTM\Utilities\Factories::getProcesses()->getCallBacks()->getProcess();
 			
 			if ($this->_connectExpire === null) {
 				$this->_connectEx		= null;
@@ -99,7 +99,7 @@ class Callback extends \MTM\WsSocket\Models\Client
 							if ($eSecKey != $rSecKey) {
 								throw new \Exception("Failed to connect to: ".$this->getHostname().":".$this->getPort().". Server returned invalid upgrade response");
 							} else {
-								\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+								\MTM\Utilities\Factories::getProcesses()->getCallBacks()->removeLoopCb($this, "connectCb");
 								$this->setLastReceivedTime($cTime);
 								$this->setIsConnected(true);
 								$this->_connectExpire	= null;
@@ -121,7 +121,7 @@ class Callback extends \MTM\WsSocket\Models\Client
 			}
 			
 		} catch (\Exception $e) {
-			\MTM\Utilities\Factories::getCallBacks()->getProcess()->removeLoopCb($this, "connectCb");
+			\MTM\Utilities\Factories::getProcesses()->getCallBacks()->removeLoopCb($this, "connectCb");
 			$this->_connectExpire	= null;
 			$this->_connectBuffer	= null;
 			$this->_connectEx		= $e;

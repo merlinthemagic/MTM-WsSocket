@@ -213,11 +213,15 @@ class Server
 		if (is_resource($clientRes) === true) {
 
 			//found new client, add it to the
-			if (\MTM\Utilities\Factories::getProcesses()->getEventLoop()->getStatus() === true) {
+			$asyncMethod	= \MTM\Utilities\Factories::getProcesses()->getAsyncMethod();
+			if ($asyncMethod === "callback") {
+				$newScObj	= new \MTM\WsSocket\Models\ServerClients\Callback();
+			} elseif ($asyncMethod === "eventloop") {
 				$newScObj	= new \MTM\WsSocket\Models\ServerClients\EventLoop();
 			} else {
-				$newScObj	= new \MTM\WsSocket\Models\ServerClients\Callback();
+				throw new \Exception("Not handled for async method: ".$asyncMethod, 38564);
 			}
+
 			$newScObj->setParent($this)->setSocket($clientRes)->setAddress($peerName);
 			$newScObj->setDefaultReadTime($this->getClientDefaultMaxReadTime());
 			$newScObj->setDefaultWriteTime($this->getClientDefaultMaxWriteTime());
