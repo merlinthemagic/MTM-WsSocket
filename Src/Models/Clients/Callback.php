@@ -8,7 +8,7 @@ class Callback extends \MTM\WsSocket\Models\Client
 	{
 		if ($this->getIsConnected() === false) {
 			
-			$cbTool	= \MTM\Utilities\Factories::getProcesses()->getCallBacks()->getProcess();
+			$cbTool	= \MTM\Utilities\Factories::getProcesses()->getCallBacks();
 			
 			if ($this->_connectExpire === null) {
 				$this->_connectEx		= null;

@@ -43,7 +43,7 @@ class EventLoop extends \MTM\WsSocket\Models\ServerClient
 				}
 			
 			} else {
-				throw new \Exception("Cannot connect, socket terminated");
+				throw new \Exception("Cannot connect, socket terminated", 2951);
 			}
 		}
 		return $this;
@@ -82,7 +82,7 @@ class EventLoop extends \MTM\WsSocket\Models\ServerClient
 								
 								$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
 								$this->getParent()->getParent()->rawWrite($this, $errorWrite);
-								throw new \Exception("Missing Header: Sec-WebSocket-Key");
+								throw new \Exception("Missing Header: Sec-WebSocket-Key", 2952);
 							
 							} else {
 								
@@ -108,7 +108,7 @@ class EventLoop extends \MTM\WsSocket\Models\ServerClient
 								if ($wData === false) {
 									$errorWrite	= "HTTP/1.1 500 Internal Error\r\n\r\n";
 									$this->getParent()->getParent()->rawWrite($this, $errorWrite);
-									throw new \Exception("Header write error");
+									throw new \Exception("Header write error", 2953);
 								} else {
 									$this->setLastReceivedTime($cTime);
 									$this->setIsConnected(true);
@@ -124,7 +124,7 @@ class EventLoop extends \MTM\WsSocket\Models\ServerClient
 
 						} elseif ($this->_connectBuffer == "IsTestConnect") {
 							//throw so the server removes this client and stops spending time on it
-							throw new \Exception("This is a test connect");
+							throw new \Exception("This is a test connect", 2954);
 						}
 						
 					} else {
@@ -136,7 +136,7 @@ class EventLoop extends \MTM\WsSocket\Models\ServerClient
 			} else {
 				$errorWrite	= "HTTP/1.1 400 Bad Request\r\n\r\n";
 				$this->getParent()->getParent()->rawWrite($this, $errorWrite);
-				throw new \Exception("Failed to connect. Client Timeout");
+				throw new \Exception("Failed to connect. Client Timeout", 2955);
 			}
 			
 		} catch (\Exception $e) {
