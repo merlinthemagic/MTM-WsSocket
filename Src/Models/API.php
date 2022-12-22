@@ -1,5 +1,5 @@
 <?php
-//© 2019 Martin Madsen
+//ï¿½ 2019 Martin Madsen
 namespace MTM\WsSocket\Models;
 
 class API
@@ -83,7 +83,7 @@ class API
 	public function read($clientObj, $byteCount, $maxWaitMs=0)
 	{
 		$maxWait			= $maxWaitMs / 1000;
-		$return["error"]	= null;
+		$return["error"]	= "";
 		$return["data"]		= null;
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 		
@@ -133,7 +133,7 @@ class API
 				}
 				if ($done === false && ($exeTime - $return["sTime"]) > $maxWait) {
 					//read timeout
-					$return["error"]	= 'timeout';
+					$return["error"]	= "timeout";
 					$done				= true;
 				}
 			}
@@ -153,7 +153,7 @@ class API
 		//loop config
 		$remainWait			= $maxWaitMs;
 		$return				= array();
-		$return["error"]	= null;
+		$return["error"]	= "";
 		$return["dataType"]	= null;
 		$return["data"]		= null;
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
@@ -378,7 +378,7 @@ class API
 		$timeFact			= \MTM\Utilities\Factories::getTime();
 		$maxWait			= $maxWaitMs / 1000;
 		$return				= array();
-		$return["error"]	= null;
+		$return["error"]	= "";
 		$return["code"]		= 0;
 		$return["sTime"]	= $timeFact->getMicroEpoch();
 		
@@ -416,7 +416,7 @@ class API
 	protected function socketWrite($clientObj, $data, $type)
 	{
 		$return				= array();
-		$return["error"]	= null;
+		$return["error"]	= "";
 		$return["code"]		= 0;
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 		
@@ -545,10 +545,10 @@ class API
 	}
 	protected function getDataTypeCode($type)
 	{
-		if (in_array($type, $this->_dataCodes) === true) {
+		if (array_key_exists($type, $this->_dataCodes) === true) {
 			return $this->_dataCodes[$type];
 		} else {
-			throw new \Exception("Invalid Data type Name: " . $type, 803);
+			throw new \Exception("Invalid Data type name: '" . $type."'", 803);
 		}
 	}
 	protected function getDataTypeName($code)

@@ -262,6 +262,14 @@ abstract class ServerClient
 	{
 		return $this->_address;
 	}
+	public function getIp()
+	{
+		return substr($this->_address, 0, strrpos($this->_address, ":"));
+	}
+	public function getPort()
+	{
+		return substr($this->_address, (strrpos($this->_address, ":") + 1));
+	}
 	public function setAddress($ipPort)
 	{
 		$this->_address		= $ipPort;
