@@ -1,5 +1,5 @@
 <?php
-//© 2019 Martin Madsen
+//ï¿½ 2019 Martin Madsen
 namespace MTM\WsSocket\Models;
 
 abstract class Client

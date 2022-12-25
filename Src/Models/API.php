@@ -56,6 +56,7 @@ class API
 			if ($isEmpty === false) {
 				$clientObj->setLastReceivedTime($cTime);
 				$rData		= $this->socketRead($clientObj, $clientObj->getDefaultReadTime());
+
 				if ($rData["dataType"] != "ping" && $rData["dataType"] != "pong") {
 					$msgs[]		= $rData["data"];
 				}
@@ -84,7 +85,7 @@ class API
 	{
 		$maxWait			= $maxWaitMs / 1000;
 		$return["error"]	= "";
-		$return["data"]		= null;
+		$return["data"]		= "";
 		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
 		
 		$done				= false;
@@ -148,15 +149,18 @@ class API
 	}
 	protected function socketRead($clientObj, $maxWaitMs=0)
 	{
+		//$maxWaitMs is per read loop, we do not know how large a message someone sends us
+		
 		//TODO: make default async loop if $maxWaitMs != 0, making it truly async
 		//allow for current processing if desired, requires getMessages in this class accepts 
 		//loop config
+		$tFact				= \MTM\Utilities\Factories::getTime();
 		$remainWait			= $maxWaitMs;
 		$return				= array();
 		$return["error"]	= "";
 		$return["dataType"]	= null;
-		$return["data"]		= null;
-		$return["sTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+		$return["data"]		= "";
+		$return["sTime"]	= $tFact->getMicroEpoch();
 		
 		$done				= false;
 		
@@ -209,7 +213,6 @@ class API
 				}
 				
 				$payloadLen	= bindec(substr($byte2, 1));
-				
 				if ($payloadLen > 125) {
 					//this is a large payload, need more bits to determine the length
 					if ($payloadLen === 126) {
@@ -220,7 +223,7 @@ class API
 						$bCount	= 8;
 					}
 					
-					$cTime			= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+					$cTime			= $tFact->getMicroEpoch();
 					$remainWait		= $maxWaitMs - round(($cTime - $return["sTime"]) * 1000);
 					$raData			= $this->read($clientObj, $bCount, $remainWait);
 					
@@ -238,13 +241,12 @@ class API
 					}
 				}
 			}
-			
-			
+
 			if ($done === false) {
 				
 				if ($useMask === true) {
 					//if there is a mask get is from the next 4 bytes
-					$cTime			= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+					$cTime			= $tFact->getMicroEpoch();
 					$remainWait		= $maxWaitMs - round(($cTime - $return["sTime"]) * 1000);
 					$rmData			= $this->read($clientObj, 4, $remainWait);
 					
@@ -260,7 +262,7 @@ class API
 			if ($done === false) {
 				
 				if ($payloadLen > 0) {
-					$cTime			= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+					$cTime			= $tFact->getMicroEpoch();
 					$remainWait		= $maxWaitMs - round(($cTime - $return["sTime"]) * 1000);
 					$rpData			= $this->read($clientObj, $payloadLen, $remainWait);
 					
@@ -271,7 +273,6 @@ class API
 						
 						$pData		= $rpData["data"];
 						if ($useMask === true) {
-							
 							for ($x=0; $x < $payloadLen; $x++) {
 								$return["data"]	.= ($pData[$x] ^ $maskData[$x % 4]);
 							}
@@ -284,12 +285,14 @@ class API
 			}
 
 			if ($done === false) {
-				$cTime			= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+				$cTime			= $tFact->getMicroEpoch();
 				$remainWait		= $maxWaitMs - round(($cTime - $return["sTime"]) * 1000);
 				
 				if ($isLast === false) {
 					
-					$exReturn	= $this->socketRead($clientObj, $remainWait);
+					//give each read loop a full maxWait, else a large message will end up cut off
+					$exReturn	= $this->socketRead($clientObj, $maxWaitMs);
+// 					$exReturn	= $this->socketRead($clientObj, $remainWait);
 					if (strlen($exReturn["error"]) > 0) {
 						$return["error"]	= $exReturn["error"];
 					} else {
@@ -358,7 +361,7 @@ class API
 			$clientObj->sendMessage($return["data"], "pong");
 		}
 		
-		$return["eTime"]	= \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+		$return["eTime"]	= $tFact->getMicroEpoch();
 		return $return;
 	}
 	public function rawWrite($clientObj, $data)
@@ -469,7 +472,7 @@ class API
 				} else {
 					$headBin	.= sprintf('%07b', $chunckLen);
 				}
-				
+
 				$payloadBin	= "";
 				
 				// Write frame head to $payloadBin.
