@@ -28,8 +28,8 @@ abstract class Client
 	protected $_isConnected=false;
 	protected $_termStatus=false;
 	
-	protected $_defaultReadTime=30000;
-	protected $_defaultWriteTime=30000;
+	protected $_defaultReadTime=2000;
+	protected $_defaultWriteTime=2000;
 	protected $_protocols=array("tcp", "ssl", "tls");
 	
 	//buffered data stored from checks that require us to read the socket
