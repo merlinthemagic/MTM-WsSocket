@@ -1,5 +1,5 @@
 <?php
-//© 2019 Martin Madsen
+//ï¿½ 2019 Martin Madsen
 namespace MTM\WsSocket\Models;
 
 class Server
@@ -258,7 +258,7 @@ class Server
 		}
 		
 		return $newObjs;
-	}	
+	}
 	protected function getSocket()
 	{
 		//server socket is only needed by the server, clients have their own resource

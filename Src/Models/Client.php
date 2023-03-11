@@ -266,21 +266,21 @@ abstract class Client
 	public function getIsConnected()
 	{
 		if (
-				$this->_isConnected === true
-				&& $this->_termStatus === false
-				) {
-					$metaObj	= $this->getMetaInfo(false);
-					$metaObj	= $this->getMetaInfo(false);
-					if (
-							$metaObj === null
-							|| $metaObj->eof === true
-							) {
-								//socket has been terminated by the remote end going away
-								$this->_isConnected	= false;
-								$this->terminate(false);
-							}
-				}
-				return $this->_isConnected;
+			$this->_isConnected === true
+			&& $this->_termStatus === false
+		) {
+			$metaObj	= $this->getMetaInfo(false);
+			$metaObj	= $this->getMetaInfo(false);
+			if (
+				$metaObj === null
+				|| $metaObj->eof === true
+			) {
+				//socket has been terminated by the remote end going away
+				$this->_isConnected	= false;
+				$this->terminate(false);
+			}
+		}
+		return $this->_isConnected;
 	}
 	public function setIsConnected($bool)
 	{
