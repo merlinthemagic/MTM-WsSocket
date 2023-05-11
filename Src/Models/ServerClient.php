@@ -1,5 +1,5 @@
 <?php
-//© 2019 Martin Madsen
+//ï¿½ 2019 Martin Madsen
 namespace MTM\WsSocket\Models;
 
 abstract class ServerClient
@@ -92,6 +92,7 @@ abstract class ServerClient
 				} catch (\Exception $e) {
 				}
 			}
+			$this->_termCbs			= array();
 			if ($errObj !== null && $throw === true) {
 				throw $errObj;
 			}

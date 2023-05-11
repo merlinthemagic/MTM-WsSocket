@@ -270,7 +270,6 @@ abstract class Client
 			&& $this->_termStatus === false
 		) {
 			$metaObj	= $this->getMetaInfo(false);
-			$metaObj	= $this->getMetaInfo(false);
 			if (
 				$metaObj === null
 				|| $metaObj->eof === true
