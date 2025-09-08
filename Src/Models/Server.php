@@ -7,6 +7,7 @@ class Server
 	protected $_uuid=null;
 	protected $_isInit=false;
 	protected $_isTerm=false;
+	protected $_isConnected=false;
 	protected $_socket=null;
 	protected $_protocol=null;
 	protected $_hostname=null;
