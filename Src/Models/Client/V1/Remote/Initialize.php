@@ -120,9 +120,9 @@ abstract class Initialize extends Alpha
 					$cTime	= $tFact->getMicroEpoch();
 					if ($this->_connExpire > $cTime) {
 
-						$rByte		= $this->readTool()->raw($this, 1);
-						if ($rByte != "") {
-							$this->appendBuffer($rByte);
+						$reObj		= $this->readTool()->raw($this, 1);
+						if ($reObj->data != "") {
+							$this->appendBuffer($reObj->data);
 							if (strpos($this->getBuffer(), "\r\n\r\n") !== false) {
 								//headers must end in \r\n\r\n, we found the end of the header
 								//expected return sec key

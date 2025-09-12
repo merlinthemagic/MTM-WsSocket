@@ -11,7 +11,9 @@ abstract class Raw extends Buffer
 		if (is_resource($sockRes) === false) {
 			throw new \Exception("Cannot read, client socket is not a resource", 1111);
 		}
-		return fread($sockRes, $byteCount);
+		
+		$rObj			= new \stdClass();
+		$rObj->data		= fread($sockRes, $byteCount);
+		return $rObj;
 	}
-	
 }

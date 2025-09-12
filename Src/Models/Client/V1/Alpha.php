@@ -73,11 +73,43 @@ abstract class Alpha extends \MTM\Utilities\Tools\Validations\V1
 	}
 	public function setBuffer($val)
 	{
+		if ($val !== null && $this->isStr($val, false) === false) {
+			try {
+				throw new \Exception("tracer");
+			} catch (\Exception $e) {
+				$rData		= array();
+				$rData[]	= "Exception";
+				$rData[]	= $e->getMessage();
+				$rData[]	= $e->getCode();
+				$rData[]	= $e->getLine();
+				$rData[]	= $e->getTraceAsString();
+				echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
+				print_r($rData);
+				echo "\n ".time()."</pre></code> \n ";
+				die("end");
+			}
+		}
 		$this->_buffData	= $val;
 		return $this;
 	}
 	public function appendBuffer($val)
 	{
+		if ($val !== null && $this->isStr($val, false) === false) {
+			try {
+				throw new \Exception("tracer");
+			} catch (\Exception $e) {
+				$rData		= array();
+				$rData[]	= "Exception";
+				$rData[]	= $e->getMessage();
+				$rData[]	= $e->getCode();
+				$rData[]	= $e->getLine();
+				$rData[]	= $e->getTraceAsString();
+				echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
+				print_r($rData);
+				echo "\n ".time()."</pre></code> \n ";
+				die("end");
+			}
+		}
 		$this->_buffData	.= $val;
 		return $this;
 	}

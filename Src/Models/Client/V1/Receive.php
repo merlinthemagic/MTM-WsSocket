@@ -34,10 +34,10 @@ abstract class Receive extends CallBacks
 			if ($this->isConnected() === true) {
 				//feof($this->getSocket()) is useless. there is no EOF so it always returns true
 				if ($this->getBuffer() === null) {
-					$nData		= $this->readTool()->raw($this, 1);
-					if ($nData != "") {
+					$reObj		= $this->readTool()->raw($this, 1);
+					if ($reObj->data != "") {
 						//store the extra data so the read function gets a
-						$this->setBuffer($nData);
+						$this->setBuffer($reObj->data);
 						$isEmpty	= false;
 					}
 				} else {
@@ -48,18 +48,19 @@ abstract class Receive extends CallBacks
 			
 			$cTime	= $tFact->getMicroEpoch();
 			if ($isEmpty === false) {
-				$this->_lastRecv	= $cTime;
-				$rData				= $this->readTool()->socket($this, $this->getReadTime());
-				if ($rData["dataType"] != "ping" && $rData["dataType"] != "pong") {
-					$this->_msgs[]		= $rData["data"];
+				$this->setLastRxTime($cTime);
+				$reObj				= $this->readTool()->socket($this, $this->getReadTime());
+				if ($reObj->type != "ping" && $reObj->type != "pong" && $reObj->type != "close") {
+					$this->_msgs[]		= $reObj->data;
 				} else {
-					//close message???
+					//pin, pong, close message???
+					
 					echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
 					// 			var_dump($total);
 					echo "\n 2222 \n";
 					//print_r($_GET);
 					echo "\n 3333 \n";
-					print_r($rData);
+					print_r($reObj);
 					echo "\n ".time()."</pre></code> \n ";
 					die("end");
 					
