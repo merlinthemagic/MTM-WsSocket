@@ -9,6 +9,7 @@ abstract class Alpha extends \MTM\Utilities\Tools\Validations\V1
 	protected $_isConn=false; //is connected
 	protected $_isInit=false; //is initialized
 	protected $_isTerm=false; //is terminated
+	protected $_initTerm=false; //terminate has started
 	protected $_lastRx=0; //last time we got data
 	protected $_lastTx=0; //last time we got data
 	protected $_chunkSize=4096; //max amount of data to send at a time

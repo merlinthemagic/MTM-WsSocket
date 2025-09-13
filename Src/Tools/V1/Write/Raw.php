@@ -8,13 +8,22 @@ abstract class Raw extends Buffer
 	{
 		$sockRes	= $wsCli->getWsSocket();
 		if (is_resource($sockRes) === false) {
-			throw new \Exception("Cannot write, client socket is not a resource", 11988);
+			throw new \Exception("Cannot write, client socket is not a resource", 1111);
 		}
-		$wBytes		= fwrite($sockRes, $data);
-		if ($wBytes === false) {
-			throw new \Exception("Failed to write to socket", 11989);
+		
+		set_error_handler(array($this, "throwErrors"));
+		try {
+			$len	= fwrite($sockRes, $data);
+			restore_error_handler();
+			if ($len === false) {
+				throw new \Exception("Failed to write to socket", 1111);
+			}
+			return $len;
+			
+		} catch (\Exception $e) {
+			restore_error_handler();
+			$wsCli->terminate();
+			throw new \Exception($e->getMessage()." ".$e->getCode(), 88001);
 		}
-		return $wBytes;
 	}
-	
 }

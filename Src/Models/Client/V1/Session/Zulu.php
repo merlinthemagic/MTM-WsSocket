@@ -6,11 +6,13 @@ class Zulu extends Process
 {
 	public function terminate()
 	{
-		$this->getServer()->removeClient($this);
-		
-		try {
+		if ($this->isTerm() === false && $this->_initTerm === false) {
+			$this->_initTerm	= true; //without this there are times when terminate is called endlessly
 			
-			if ($this->isTerm() === false) {
+			$this->getServer()->removeClient($this);
+			
+			try {
+
 				//default server is closing message. Termination Codes Src: https://tools.ietf.org/html/rfc6455#section-7.4.1
 				$termCode	= 1001;
 				$termMsg	= "GoodByeClient";
@@ -21,39 +23,23 @@ class Zulu extends Process
 					$msg	.= chr(bindec($binByte));
 				}
 				$msg	.= $termMsg;
+				$this->sendMessage($msg, "close");				
+				//we are expecting the client to ack the close and return our message
+				//was tested on firefox and Chrome
+				//what? $this->getMessages(1000);
 				
-				$this->sendMessage($msg, "close");
-			}
-			//we are expecting the client to ack the close and return our message
-			//was tested on firefox and Chrome
-			//what? $this->getMessages(1000);
-			
-		} catch (\Exception $e) {
-			//no throwing, terminate can have many unknowns
-			$rData		= array();
-			$rData[]	= "Exception";
-			$rData[]	= $e->getMessage();
-			$rData[]	= $e->getCode();
-			$rData[]	= $e->getLine();
-			$rData[]	= $e->getTraceAsString();
-			echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
-			print_r($rData);
-			echo "\n ".time()."</pre></code> \n ";
-// 			die("end");
-		}
-		
-		
-		
-		
-		
-		$this->_isConn		= false;
-		$this->_isTerm		= true;
-		
-		if ($this->getTermCb() !== null) {
-			try {
-				call_user_func_array($this->getTermCb(), array($this));
 			} catch (\Exception $e) {
-				//user issue
+				//no throwing, terminate can have many unknowns
+			}
+
+			$this->_isConn		= false;
+			$this->_isTerm		= true;
+			if ($this->getTermCb() !== null) {
+				try {
+					call_user_func_array($this->getTermCb(), array($this));
+				} catch (\Exception $e) {
+					//user issue
+				}
 			}
 		}
 	}

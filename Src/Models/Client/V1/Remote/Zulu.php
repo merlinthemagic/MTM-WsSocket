@@ -6,10 +6,10 @@ class Zulu extends Process
 {
 	public function terminate()
 	{
-		
-		try {
-			
-			if ($this->isTerm() === false) {
+		if ($this->isTerm() === false && $this->_initTerm === false) {
+			$this->_initTerm	= true;
+			try {
+
 				//default return is "all is good" message (1000). Termination Codes Src: https://tools.ietf.org/html/rfc6455#section-7.4.1
 				$termCode	= 1000;
 				$termMsg	= "GoodByeServer";
@@ -22,34 +22,20 @@ class Zulu extends Process
 				$msg .= $termMsg;
 				
 				$this->sendMessage($msg, "close");
+
+			} catch (\Exception $e) {
+				//no throwing, terminate can have many unknowns
 			}
 
-		} catch (\Exception $e) {
-			//no throwing, terminate can have many unknowns
-			$rData		= array();
-			$rData[]	= "Exception";
-			$rData[]	= $e->getMessage();
-			$rData[]	= $e->getCode();
-			$rData[]	= $e->getLine();
-			$rData[]	= $e->getTraceAsString();
-			echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
-			print_r($rData);
-			echo "\n ".time()."</pre></code> \n ";
-			// 			die("end");
-		}
-		
-		
-		
-		
-		
-		$this->_isConn		= false;
-		$this->_isTerm		= true;
-		
-		if ($this->getTermCb() !== null) {
-			try {
-				call_user_func_array($this->getTermCb(), array($this));
-			} catch (\Exception $e) {
-				//user issue
+			$this->_isConn		= false;
+			$this->_isTerm		= true;
+			
+			if ($this->getTermCb() !== null) {
+				try {
+					call_user_func_array($this->getTermCb(), array($this));
+				} catch (\Exception $e) {
+					//user issue
+				}
 			}
 		}
 	}

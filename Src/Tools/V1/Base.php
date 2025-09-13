@@ -25,10 +25,12 @@ abstract class Base extends \MTM\Utilities\Tools\Validations\V1
 			throw new \Exception("Invalid Datatype Code: ".$code, 1111);
 		}
 	}
-	
-	
 	protected function microTime()
 	{
 		return \MTM\Utilities\Factories::getTime()->getMicroEpoch();
+	}
+	public function throwErrors($errno, $errstr, $errfile, $errline)
+	{
+		throw new \Exception($errstr, $errno);
 	}
 }
