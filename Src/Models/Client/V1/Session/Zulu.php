@@ -24,9 +24,9 @@ class Zulu extends Process
 				}
 				$msg	.= $termMsg;
 				$this->sendMessage($msg, "close");				
+				
 				//we are expecting the client to ack the close and return our message
 				//was tested on firefox and Chrome
-				//what? $this->getMessages(1000);
 				
 			} catch (\Exception $e) {
 				//no throwing, terminate can have many unknowns
