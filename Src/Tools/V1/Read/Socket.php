@@ -54,8 +54,8 @@ abstract class Socket extends Raw
 			}
 			
 			//next 4 bits are the data type
-			$dtName				= $this->getDataTypeName(bindec($byte1Ps[1]));
-			$return["dataType"]	= $dtName;
+			$rObj->type			= $this->getDataTypeName(bindec($byte1Ps[1]));
+
 			//are we using a mask?
 			$useMask	= true;
 			if ($byte2[0] == "0") {

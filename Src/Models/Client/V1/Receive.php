@@ -53,29 +53,9 @@ abstract class Receive extends CallBacks
 				if ($reObj->type != "ping" && $reObj->type != "pong" && $reObj->type != "close") {
 					$this->_msgs[]		= $reObj->data;
 				} else {
-					//pin, pong, close message???
-					
-					echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
-					// 			var_dump($total);
-					echo "\n 2222 \n";
-					//print_r($_GET);
-					echo "\n 3333 \n";
-					print_r($reObj);
-					echo "\n ".time()."</pre></code> \n ";
-					die("end");
-					
-// 					if (count($msgs) > 0) {
-// 						$this->setIdle(false);
-// 						foreach ($msgs as $index => $msg) {
-// 							if ($msg == "GoodByeClient" || $msg == "") {
-// 								unset($msgs[$index]);
-// 							}
-// 						}
-// 					}
+					//pin, pong, close message, not interested
 				}
-				
-				
-				
+
 			} elseif ($cTime >= $tTime || count($msgs) > 0) {
 				//done, we have emptied the message queue or run out of time
 				break;
