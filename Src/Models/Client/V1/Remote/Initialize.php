@@ -34,41 +34,30 @@ abstract class Initialize extends Alpha
 	
 					$this->_connExpire	= $tFact->getMicroEpoch() + ($this->_connTimeout / 1000);
 					$strConn			= $this->getProtocol() . "://". $this->getHost() .":" . $this->getPort() . "";
+					$ssl				= null;
 					if ($this->getProtocol() ==  "tls") {
 						
 						//PEM formatted cert
-						$ssl		= stream_context_create();
 						$certFile	= \MTM\FS\Factories::getFiles()->getTempFile("pem")->setContent($this->getCertificate()->getChainAsString());
-						stream_context_set_option($ssl, "ssl", "cafile", $certFile->getPathAsString());
-						
-						stream_context_set_option($ssl, "ssl", "allow_self_signed", true);
-	// 					stream_context_set_option($ssl, "ssl", "verify_peer", true);
-						stream_context_set_option($ssl, "ssl", "verify_peer", false); //debugging only
-						stream_context_set_option($ssl, "ssl", "verify_peer_name", true);
-	
-						//client cannot use ip with tls as the certificate hostname cannot be verified (if not part of CN)
-						set_error_handler(array($this, "connectError"));
-						try {
-							$sockRes 	= stream_socket_client($strConn, $errno, $errstr, ($this->_connTimeout / 1000), STREAM_CLIENT_CONNECT, $ssl);
-							restore_error_handler();
-						} catch (\Exception $e) {
-							restore_error_handler();
-							throw $e;
-						}
-						
-					} else {
-						
-						set_error_handler(array($this, "connectError"));
-						try {
-							$sockRes 	= stream_socket_client($strConn, $errno, $errstr, ($this->_connTimeout / 1000), STREAM_CLIENT_CONNECT);
-							restore_error_handler();
-						} catch (\Exception $e) {
-							restore_error_handler();
-							throw $e;
-						}
+						$ssl		= stream_context_create(array("ssl" => array(
+										"verify_peer_name"			=> true,
+										"allow_self_signed"			=> true,
+										"verify_peer"				=> true,
+										"cafile" 					=> $certFile->getPathAsString(),
+								)
+							)
+						);
 					}
-					
-					
+					//client cannot use ip with tls as the certificate hostname cannot be verified (if not part of CN)
+					set_error_handler(array($this, "connectError"));
+					try {
+						$sockRes 	= stream_socket_client($strConn, $errno, $errstr, round(($this->_connTimeout / 1000), 2), STREAM_CLIENT_CONNECT, $ssl);
+						restore_error_handler();
+					} catch (\Exception $e) {
+						restore_error_handler();
+						throw $e;
+					}
+
 					if (is_resource($sockRes) === false) {
 						//if you get error: Address already in use, know that if the port was in use by another socket
 						//that is now shutdown, it will take a few seconds before the port is available again
