@@ -13,19 +13,20 @@ abstract class Process extends Initialize
 		$this->pollNewClients(-1);
 		return array_values($this->_clObjs);
 	}
-	public function pollNewClients($timeoutMs=10000)
+	public function pollNewClients($timeout=10000)
 	{
 		//add class variable for async execution
 		if ($this->isInit() === false) {
 			return false;
 		}
+
 		foreach ($this->_penObjs as $ind => $penObj) {
 			try {
 				$penObj->connect();
 				if ($penObj->isConnected() === true) {
 					//connected
 					unset($this->_penObjs[$ind]);
-					$this->_clObjs[]	= $penObj;
+					$this->_clObjs[$ind]	= $penObj;
 				} elseif ($penObj->isTerm() === true) {
 					unset($this->_penObjs[$ind]);
 				}
@@ -33,11 +34,11 @@ abstract class Process extends Initialize
 				unset($this->_penObjs[$ind]);
 			}
 		}
-		if ($timeoutMs == -1) {
+		if ($timeout == -1) {
 			//get all pending clients, but dont wait around
 			$timeout	= 0.01;
 		} else {
-			$timeout	= $timeoutMs / 1000;
+			$timeout	= round(($timeout / 1000), 2);
 		}
 		
 		if ($this->getProtocol() == "tcp") {
@@ -98,8 +99,7 @@ abstract class Process extends Initialize
 		//called by server clients when they want to remove themself
 		if ($wsCli instanceof \MTM\WsSocket\Models\Client\V1\Session\Zulu === false) {
 			throw new \Exception("Invalid input", 1111);
-		}
-		if (array_key_exists($wsCli->getGuid(), $this->_clObjs) === true) {
+		} elseif (array_key_exists($wsCli->getGuid(), $this->_clObjs) === true) {
 			unset($this->_clObjs[$wsCli->getGuid()]);
 		} elseif (array_key_exists($wsCli->getGuid(), $this->_penObjs) === true) {
 			unset($this->_penObjs[$wsCli->getGuid()]);

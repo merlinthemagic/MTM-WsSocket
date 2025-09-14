@@ -90,8 +90,8 @@ abstract class Initialize extends Alpha
 				
 				//default headers, version 13 means RFC-6455 compliant
 				$heads = array(
-						"Host"                  => $this->getHost() . ":" . $this->getPort(),
-						"User-Agent"            => "Merlin-Ws-Client",
+						"Host"                  => $this->getHost().":".$this->getPort(),
+						"User-Agent"            => "MTM-WsClient",
 						"Connection"            => "Upgrade",
 						"Upgrade"               => "websocket",
 						"Sec-WebSocket-Key"     => $this->getSocketKey(),
@@ -127,7 +127,7 @@ abstract class Initialize extends Alpha
 								//headers must end in \r\n\r\n, we found the end of the header
 								//expected return sec key
 								$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-								$eSecKey	= base64_encode(pack("H*", sha1($this->getSocketKey() . $strRfc6455)));
+								$eSecKey	= base64_encode(pack("H*", hash("sha1", $this->getSocketKey() . $strRfc6455)));
 								$rSecKey	= null;
 								$lines		= explode("\n", $this->getBuffer());
 								foreach ($lines as $line) {
@@ -174,10 +174,6 @@ abstract class Initialize extends Alpha
 	}
 	public function connectError($errno, $errstr, $errfile, $errline)
 	{
-// 		if (strpos($errstr, "certificate verify failed") !== false) {
-// 			throw new \Exception("Server certificate validation failed", 1111);
-// 		} else {
-			throw new \Exception($errstr, $errno);
-// 		}
+		throw new \Exception($errstr, $errno);
 	}
 }

@@ -26,6 +26,10 @@ class Zulu extends Process
 			} catch (\Exception $e) {
 				//no throwing, terminate can have many unknowns
 			}
+			
+			if (is_resource($this->getWsSocket()) === true) {
+				fclose($this->getWsSocket());
+			}
 
 			$this->_isConn		= false;
 			$this->_isTerm		= true;

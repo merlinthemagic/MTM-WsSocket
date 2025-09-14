@@ -207,26 +207,7 @@ abstract class Alpha extends \MTM\Utilities\Tools\Validations\V1
 			return null;
 		}
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	protected function readTool()
 	{
 		return \MTM\WsSocket\Factories::getTools()->getReadV1();

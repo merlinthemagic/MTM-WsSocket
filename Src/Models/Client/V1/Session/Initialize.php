@@ -62,13 +62,13 @@ abstract class Initialize extends Alpha
 								} else {
 									
 									$strRfc6455	= "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-									$oSecKey	= base64_encode(sha1($secKey . $strRfc6455, true));
+									$oSecKey	= base64_encode(hash("sha1", $secKey . $strRfc6455, true));
 									
 									$heads = array(
 											"Upgrade"               => "websocket",
 											"Connection"            => "Upgrade",
 											"Sec-WebSocket-Accept"  => $oSecKey,
-											"WebSocket-Server"  	=> "Merlin-Ws-Server",
+											"WebSocket-Server"  	=> "MTM-WsServer",
 									);
 									
 									//turn into a string we can send back to the client
@@ -129,21 +129,6 @@ abstract class Initialize extends Alpha
 				default:
 					break;
 			}
-// 			try {
-// 				throw $e;
-// 			} catch (\Exception $e) {
-// 				$rData		= array();
-// 				$rData[]	= "Exception";
-// 				$rData[]	= $e->getMessage();
-// 				$rData[]	= $e->getCode();
-// 				$rData[]	= $e->getLine();
-// 				$rData[]	= $e->getTraceAsString();
-// 				echo "\n <code><pre> \nClass:  ".__CLASS__." \nMethod:  ".__FUNCTION__. "  \n";
-// 				print_r($rData);
-// 				echo "\n ".time()."</pre></code> \n ";
-// 				die("end");
-// 			}
-			
 			throw $e;
 		}
 	}
