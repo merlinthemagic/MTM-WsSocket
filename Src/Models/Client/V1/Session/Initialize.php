@@ -91,12 +91,7 @@ abstract class Initialize extends Alpha
 										//success
 										if ($this->getConnectCb() !== null) {
 											//throw if you do not want to allow this client
-											try {
-												call_user_func_array($this->getConnectCb(), array($this));
-											} catch (\Exception $e) {
-												$this->terminate();
-												throw $e;
-											}
+											call_user_func_array($this->getConnectCb(), array($this));
 										}
 										break;
 									}
@@ -127,9 +122,8 @@ abstract class Initialize extends Alpha
 				case 44588: //missing Sec-WebSocket-Key header
 					break;
 				default:
-					break;
+					throw $e;
 			}
-			throw $e;
 		}
 	}
 }

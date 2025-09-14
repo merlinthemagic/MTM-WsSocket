@@ -101,6 +101,12 @@ abstract class Alpha extends \MTM\Utilities\Tools\Validations\V1
 	{
 		return $this->_clientChunkSize;
 	}
+	public function setClientConnectAsync($val)
+	{
+		$this->isBoolean($val, true);
+		$this->_clientConnectAsync	= $val;
+		return $this;
+	}
 	public function getClientConnectAsync()
 	{
 		return $this->_clientConnectAsync;
