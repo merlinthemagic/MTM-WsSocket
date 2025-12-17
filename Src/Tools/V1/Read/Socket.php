@@ -119,7 +119,7 @@ abstract class Socket extends Raw
 			if ($isLast === false) {
 				//give each read loop a full maxWait, else a large message will end up cut off
 				$rWait			= round(($tTime - $tFact->getMicroEpoch()) * 1000);
-				$reObj			= $this->socketRead($wsCli, $timeout);
+				$reObj			= $this->socket($wsCli, $timeout);
 				$rObj->data		.= $reObj->data;
 				if ($rObj->type != "continuation") {
 					//last part was not a continuation, maybe a close?
